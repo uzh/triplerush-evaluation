@@ -18,7 +18,7 @@
  *  
  */
 
-package com.signalcollect.triplerush.evaluation
+package com.signalcollect.evaluation
 
 import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TriplePattern

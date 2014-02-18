@@ -18,13 +18,12 @@
  *  
  */
 
-package com.signalcollect.triplerush.evaluation
+package com.signalcollect.triplerush.evaluation.legacy
 
 import java.util.HashMap
 import collection.JavaConversions._
 import scala.io.Source
 import com.signalcollect.triplerush.TriplePattern
-import scala.io.Codec
 
 //    def fullQueries: List[PatternQuery] = List(
 //      SELECT ? "X" ? "Y" ? "Z" WHERE (

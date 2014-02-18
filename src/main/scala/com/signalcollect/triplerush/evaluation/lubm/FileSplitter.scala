@@ -31,7 +31,7 @@ import com.signalcollect.nodeprovisioning.torque.TorqueJobSubmitter
 import com.signalcollect.nodeprovisioning.torque.TorquePriority
 import FileOperations.createFolder
 import FileOperations.filesIn
-import com.signalcollect.triplerush.evaluation.Evaluation
+import com.signalcollect.triplerush.evaluation.legacy.Evaluation
 import scala.Array.canBuildFrom
 import com.signalcollect.triplerush.TripleMapper
 import com.signalcollect.nodeprovisioning.torque.LocalHost

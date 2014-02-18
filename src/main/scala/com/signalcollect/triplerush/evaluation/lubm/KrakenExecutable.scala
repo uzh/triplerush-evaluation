@@ -23,7 +23,7 @@ import collection.JavaConversions._
 import com.signalcollect.nodeprovisioning.torque.TorqueHost
 import com.signalcollect.nodeprovisioning.torque.TorqueJobSubmitter
 import com.signalcollect.nodeprovisioning.torque.TorquePriority
-import com.signalcollect.triplerush.evaluation.Evaluation
+import com.signalcollect.triplerush.evaluation.legacy.Evaluation
 import com.signalcollect.nodeprovisioning.torque.LocalHost
 import com.signalcollect.nodeprovisioning.torque.ExecutionHost
 

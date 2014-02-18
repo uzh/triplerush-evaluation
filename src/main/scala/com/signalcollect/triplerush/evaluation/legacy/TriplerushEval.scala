@@ -18,40 +18,28 @@
  *  
  */
 
-package com.signalcollect.triplerush.evaluation
+package com.signalcollect.triplerush.evaluation.legacy
 
 import java.io.File
 import java.util.Date
-import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
-import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
 import scala.io.Source
-import scala.util.Random
 import com.signalcollect.GraphBuilder
-import com.signalcollect.factory.messagebus.BulkAkkaMessageBusFactory
 import com.signalcollect.nodeprovisioning.torque.LocalHost
 import com.signalcollect.nodeprovisioning.torque.TorqueHost
 import com.signalcollect.nodeprovisioning.torque.TorqueJobSubmitter
 import com.signalcollect.nodeprovisioning.torque.TorqueNodeProvisioner
-import com.signalcollect.nodeprovisioning.torque.TorquePriority
-import com.signalcollect.triplerush.Mapping
-import com.signalcollect.triplerush.QueryParticle
-import com.signalcollect.triplerush.QueryEngine
-import com.signalcollect.triplerush.TriplePattern
-import com.signalcollect.triplerush.Mapping
-import akka.event.Logging
 import com.signalcollect.triplerush.QuerySpecification
-import scala.collection.mutable.UnrolledBuffer
 import java.lang.management.ManagementFactory
 import collection.JavaConversions._
-import language.postfixOps
 import com.signalcollect.triplerush.TripleRush
 import com.signalcollect.nodeprovisioning.torque.TorqueNodeProvisioner
 import collection.JavaConversions._
 import java.lang.management.GarbageCollectorMXBean
 import com.signalcollect.nodeprovisioning.NodeProvisioner
 import com.signalcollect.triplerush.optimizers.Optimizer
+import scala.Option.option2Iterable
 
 trait TriplerushEval {
 
@@ -114,7 +102,7 @@ trait TriplerushEval {
     runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
     val startTime = System.nanoTime
     val (queryResultFuture, queryStatsFuture) = tr.executeAdvancedQuery(query, optimizer)
-    val queryResult = Await.result(queryResultFuture, 7200 seconds)
+    val queryResult = Await.result(queryResultFuture, 7200.seconds)
     val finishTime = System.nanoTime
     val executionTime = roundToMillisecondFraction(finishTime - startTime)
     val gcTimeAfter = getGcCollectionTime(gcs)
@@ -123,7 +111,7 @@ trait TriplerushEval {
     val gcCountDuringQuery = gcCountAfter - gcCountBefore
     val compileTimeAfter = compilations.getTotalCompilationTime
     val compileTimeDuringQuery = compileTimeAfter - compileTimeBefore
-    val queryStats = Await.result(queryStatsFuture, 10 seconds)
+    val queryStats = Await.result(queryStatsFuture, 10.seconds)
     val optimizingTime = roundToMillisecondFraction(queryStats("optimizingDuration").asInstanceOf[Long])
     runResult += ((s"revision", revision))
     runResult += ((s"queryId", queryDescription))
@@ -221,7 +209,7 @@ object EvalHelpers {
   }
 
   def getGcCollectionTime(gcs: List[GarbageCollectorMXBean]): Long = {
-    gcs map (_.getCollectionTime) sum
+    gcs.map(_.getCollectionTime).sum
   }
 
   def lastGcId(gcs: List[GarbageCollectorMXBean]): Long = {
@@ -251,6 +239,6 @@ object EvalHelpers {
   }
 
   def getGcCollectionCount(gcs: List[GarbageCollectorMXBean]): Long = {
-    gcs map (_.getCollectionCount) sum
+    gcs.map(_.getCollectionCount).sum
   }
 }

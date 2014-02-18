@@ -18,7 +18,7 @@
  *  
  */
 
-package com.signalcollect.triplerush.evaluation
+package com.signalcollect.triplerush.evaluation.legacy
 
 import com.signalcollect.nodeprovisioning.torque._
 import com.signalcollect.util.RandomString
