@@ -7,7 +7,7 @@ import com.signalcollect.triplerush.optimizers.CleverCardinalityOptimizer
 import com.signalcollect.triplerush.TripleRush
 import com.signalcollect.triplerush.optimizers.Optimizer
 import com.signalcollect.triplerush.Mapping
-import com.signalcollect.evaluation.LubmQueries
+import com.signalcollect.triplerush.evaluation.LubmQueries
 
 object NewLubmEvaluation extends App {
 

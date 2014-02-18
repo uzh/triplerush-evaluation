@@ -17,12 +17,13 @@
  *
  */
 
-package com.signalcollect.deployment
+package com.signalcollect.triplerush.evaluation
 
 import com.signalcollect.GraphBuilder
 import com.signalcollect.examples.PageRankVertex
 import com.signalcollect.examples.PageRankEdge
 import akka.actor.ActorRef
+import com.signalcollect.deployment.TorqueDeployableAlgorithm
 
 class PageRankExample extends TorqueDeployableAlgorithm {
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {

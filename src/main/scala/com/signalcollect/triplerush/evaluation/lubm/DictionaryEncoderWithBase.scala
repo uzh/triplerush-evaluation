@@ -29,7 +29,7 @@ import collection.JavaConversions._
 import scala.io.Source
 import org.semanticweb.yars.nx.parser.NxParser
 import java.io.OutputStreamWriter
-import com.signalcollect.evaluation.QueryEncoding
+import com.signalcollect.triplerush.evaluation.QueryEncoding
 
 object DictionaryEncoderWithBase extends KrakenExecutable with Serializable {
 //  override def executionHost = local
