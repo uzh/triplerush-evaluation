@@ -18,7 +18,7 @@
  *  
  */
 
-package com.signalcollect.triplerush.evaluation.legacy
+package com.signalcollect.triplerush.evaluation
 
 import java.net.URL
 import scala.collection.JavaConversions._
@@ -27,6 +27,7 @@ import com.google.gdata.data._
 import com.google.gdata.data.spreadsheet._
 import com.signalcollect.nodeprovisioning.torque._
 import com.google.gdata.util.InvalidEntryException
+import com.google.gdata.data.spreadsheet.SpreadsheetFeed
 import com.google.gdata.data.spreadsheet.SpreadsheetFeed
 
 class GoogleDocsResultHandler(username: String, password: String, spreadsheetName: String, worksheetName: String)
