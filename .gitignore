@@ -40,6 +40,8 @@ binary-split/0.filtered-split
 
 *.filtered-split
 
-*.config
+config-tmp/
 
 *.split
+
+deployment.config
