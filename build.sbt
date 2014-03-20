@@ -27,5 +27,6 @@ excludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
 /** Dependencies */
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-library" % "2.10.3"  % "compile",
-  "com.google.collections" % "google-collections" % "1.0"
+  "com.google.collections" % "google-collections" % "1.0" % "compile",
+  "org.apache.jena" % "apache-jena-libs" % "2.11.1" % "compile"
   )
