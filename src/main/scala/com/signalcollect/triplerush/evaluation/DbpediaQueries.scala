@@ -24,6 +24,14 @@ import com.signalcollect.triplerush.TriplePattern
 
 object DbpediaQueries {
 
+  val twoHopQueries = List("""
+SELECT ?T
+WHERE {
+    	<http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
+    	?B <http://dbpedia.org/property/wikilink> ?T
+}
+""")
+
   val threeHopQueries = List("""
 SELECT ?T
 WHERE {
@@ -32,6 +40,5 @@ WHERE {
     ?D <http://dbpedia.org/property/wikilink> ?T
 }
 """)
-
 
 }
