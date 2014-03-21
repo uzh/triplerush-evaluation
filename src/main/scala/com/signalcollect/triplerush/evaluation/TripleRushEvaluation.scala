@@ -19,37 +19,26 @@
 
 package com.signalcollect.triplerush.evaluation
 
-import com.signalcollect.GraphBuilder
-import com.signalcollect.examples.PageRankVertex
-import com.signalcollect.examples.PageRankEdge
-import akka.actor.ActorRef
-import com.signalcollect.deployment.TorqueDeployableAlgorithm
-import com.signalcollect.triplerush.TripleRush
-import scala.reflect.runtime.universe
-import scala.concurrent.Await
-import com.signalcollect.triplerush.optimizers.Optimizer
-import com.signalcollect.triplerush.QuerySpecification
 import java.io.File
-import java.util.Date
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.io.Source
-import com.signalcollect.GraphBuilder
-import com.signalcollect.nodeprovisioning.torque.LocalHost
-import com.signalcollect.nodeprovisioning.torque.TorqueHost
-import com.signalcollect.nodeprovisioning.torque.TorqueJobSubmitter
-import com.signalcollect.nodeprovisioning.torque.TorqueNodeProvisioner
-import com.signalcollect.triplerush.QuerySpecification
-import java.lang.management.ManagementFactory
-import collection.JavaConversions._
-import com.signalcollect.triplerush.TripleRush
-import com.signalcollect.nodeprovisioning.torque.TorqueNodeProvisioner
-import collection.JavaConversions._
 import java.lang.management.GarbageCollectorMXBean
-import com.signalcollect.nodeprovisioning.NodeProvisioner
-import com.signalcollect.triplerush.optimizers.Optimizer
+import java.lang.management.ManagementFactory
+import java.util.Date
+
 import scala.Option.option2Iterable
-import com.signalcollect.triplerush.evaluation.legacy.TriplerushEval
+import scala.collection.JavaConversions.asScalaBuffer
+import scala.collection.JavaConversions.collectionAsScalaIterable
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
+import scala.io.Source
+import scala.reflect.runtime.universe
+
+import com.signalcollect.GraphBuilder
+import com.signalcollect.deployment.TorqueDeployableAlgorithm
+import com.signalcollect.triplerush.QuerySpecification
+import com.signalcollect.triplerush.TripleRush
+import com.signalcollect.triplerush.optimizers.Optimizer
+
+import akka.actor.ActorRef
 
 class TripleRushEvaluation extends TorqueDeployableAlgorithm {
 
