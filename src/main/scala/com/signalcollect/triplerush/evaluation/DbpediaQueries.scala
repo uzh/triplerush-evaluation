@@ -27,24 +27,24 @@ object DbpediaQueries {
   val oneHopQueries = List("""
 SELECT ?T
 WHERE {
-    	<http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?T
+		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?T
 }
 """)
   
   val twoHopQueries = List("""
 SELECT ?T
 WHERE {
-    	<http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
-    	?B <http://dbpedia.org/property/wikilink> ?T
+		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
+		  ?A <http://dbpedia.org/property/wikilink> ?T
 }
 """)
 
   val threeHopQueries = List("""
 SELECT ?T
 WHERE {
-    	<http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
-    	?B <http://dbpedia.org/property/wikilink> ?C .
-    ?D <http://dbpedia.org/property/wikilink> ?T
+		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
+		  ?A <http://dbpedia.org/property/wikilink> ?B .
+		  ?B <http://dbpedia.org/property/wikilink> ?T
 }
 """)
 
