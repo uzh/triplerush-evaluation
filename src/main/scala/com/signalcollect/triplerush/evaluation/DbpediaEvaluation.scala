@@ -48,7 +48,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
   val spreadsheetPasswordKey = "spreadsheetPassword"
   val spreadsheetNameKey = "spreadsheetName"
   val worksheetNameKey = "worksheetName"
-  val ntriplesKey = "ntiples"
+  val ntriplesKey = "ntriples"
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
     println(s"Received parameters $parameters")
@@ -73,7 +73,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
 
     val optimizerInitStart = System.nanoTime
     val optimizerInitEnd = System.nanoTime
-    val queries = DbpediaQueries.twoHopQueries
+    val oneHop = DbpediaQueries.oneHopQueries
 
     commonResults += ((s"optimizerInitialisationTime", roundToMillisecondFraction(optimizerInitEnd - optimizerInitStart).toString))
     commonResults += (("loadingTime", loadingTime.toString))
@@ -81,14 +81,21 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     println("Starting warm-up...")
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
-    for (queryId <- 1 to queries.size) {
-      println(s"Running evaluation for query $queryId.")
-      val result = executeEvaluationRun(queries(queryId - 1), queryId.toString, tr, commonResults)
+    for (queryId <- 1 to oneHop.size) {
+      val query = oneHop(queryId - 1)
+      println(s"Running evaluation for query $query.")
+      val result = executeEvaluationRun(query, queryId.toString, tr, commonResults)
       resultReporter(result)
       println(s"Done running evaluation for query $queryId. Awaiting idle")
       tr.awaitIdle
       println("Idle")
     }
+
+    val twoHopQuery = DbpediaQueries.twoHopQueries.head
+    val twoHopResultsFuture = tr.executeCountingQuery(QuerySpecification.fromSparql(twoHopQuery).get)
+    val result = Await.result(twoHopResultsFuture, 7200.seconds)
+    println(s"Number of two-hop Elvis results: $result")
+    
     tr.shutdown
   }
 
@@ -115,6 +122,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     val queryResult = Await.result(queryResultFuture, 7200.seconds)
     val queryStats = Await.result(queryStatsFuture, 10.seconds)
     val finishTime = System.nanoTime
+    println("Number of one results: " + queryResult.size)
     val executionTime = roundToMillisecondFraction(finishTime - startTime)
     val gcTimeAfter = getGcCollectionTime(gcs)
     val gcCountAfter = getGcCollectionCount(gcs)
