@@ -31,5 +31,6 @@ resolvers +=
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-library" % "2.10.3"  % "compile",
   "com.google.collections" % "google-collections" % "1.0",
+    "org.apache.jena" % "apache-jena-libs" % "2.11.1" % "compile",
   "com.sleepycat" % "je" % "5.0.103"
   )
