@@ -28,7 +28,7 @@ import com.signalcollect.nodeprovisioning.torque.LocalHost
 import com.signalcollect.nodeprovisioning.torque.ExecutionHost
 
 trait KrakenExecutable extends App {
-  def assemblyPath = "./target/scala-2.10/triplerush-assembly-1.0-SNAPSHOT.jar"
+  def assemblyPath = "./target/scala-2.10/triplerush-evaluation-assembly-1.0-SNAPSHOT.jar"
   val kraken = new TorqueHost(
     jobSubmitter = new TorqueJobSubmitter(username = System.getProperty("user.name"), hostname = "kraken.ifi.uzh.ch"),
     coresPerNode = 1,
