@@ -37,29 +37,32 @@ import com.signalcollect.triplerush.TripleRush
 import akka.actor.ActorRef
 import com.signalcollect.triplerush.Dictionary
 import com.signalcollect.triplerush.JvmWarmup
-import com.signalcollect.triplerush.optimizers.NoOptimizerCreator
 
-class DbpediaEvaluation extends TorqueDeployableAlgorithm {
+class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
 
   import EvalHelpers._
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
+    // Shut down the actors.
+    val g = GraphBuilder.withPreallocatedNodes(nodeActors).build
+    g.shutdown
+    
     println(s"Received parameters $parameters")
     val evaluationDescription = parameters("evaluationDescription")
-    //val ntriples = parameters("ntriples")
+    val ntriples = parameters("ntriples")
     val spreadsheetUsername = parameters("spreadsheetUsername")
     val spreadsheetPassword = parameters("spreadsheetPassword")
     val spreadsheetName = parameters("spreadsheetName")
     val worksheetName = parameters("worksheetName")
-    val splits = parameters("splits")
-    val dictionary = parameters("dictionary")
+    //val splits = parameters("splits")
+    //val dictionary = parameters("dictionary")
     val warmupSeconds = parameters("warmupSeconds").toInt
 
     var commonResults = parameters
     commonResults += "warmupSeconds" -> warmupSeconds.toString
 
     val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder = graphBuilder, optimizerCreator = NoOptimizerCreator)
+    val tr = new TripleRush(graphBuilder)
 
     JvmWarmup.warmupWithExistingStore(warmupSeconds, 20, tr)
 
@@ -69,17 +72,17 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
     val loadingTime = measureTime {
-      //tr.loadNtriples(ntriples)
-      for (splitId <- 0 until 2880) {
-        val splitFile = s"$splits/$splitId.filtered-split"
-        tr.loadBinary(splitFile, Some(splitId))
-        if (splitId % 288 == 279) {
-          println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
-          tr.awaitIdle
-          println(s"Continuing graph loading...")
-        }
-      }
-      Dictionary.loadFromFile(dictionary)
+      tr.loadNtriples(ntriples)
+      //      for (splitId <- 0 until 2880) {
+      //        val splitFile = s"$splits/$splitId.filtered-split"
+      //        tr.loadBinary(splitFile, Some(splitId))
+      //        if (splitId % 288 == 279) {
+      //          println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
+      //          tr.awaitIdle
+      //          println(s"Continuing graph loading...")
+      //        }
+      //      }
+      //      Dictionary.loadFromFile(dictionary)
       tr.prepareExecution
     }
 
