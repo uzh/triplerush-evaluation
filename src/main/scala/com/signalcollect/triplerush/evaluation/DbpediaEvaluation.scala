@@ -23,7 +23,6 @@ import java.io.File
 import java.lang.management.GarbageCollectorMXBean
 import java.lang.management.ManagementFactory
 import java.util.Date
-
 import scala.Option.option2Iterable
 import scala.collection.JavaConversions.asScalaBuffer
 import scala.collection.JavaConversions.collectionAsScalaIterable
@@ -31,58 +30,60 @@ import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.io.Source
 import scala.reflect.runtime.universe
-
 import com.signalcollect.GraphBuilder
 import com.signalcollect.deployment.TorqueDeployableAlgorithm
 import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TripleRush
-
 import akka.actor.ActorRef
+import com.signalcollect.triplerush.Dictionary
+import com.signalcollect.triplerush.JvmWarmup
 
 class DbpediaEvaluation extends TorqueDeployableAlgorithm {
 
   import EvalHelpers._
 
-  val evaluationDescriptionKey = "evaluationDescription"
-  val spreadsheetUsernameKey = "spreadsheetUsername"
-  val spreadsheetPasswordKey = "spreadsheetPassword"
-  val spreadsheetNameKey = "spreadsheetName"
-  val worksheetNameKey = "worksheetName"
-  val ntriplesKey = "ntriples"
-
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
     println(s"Received parameters $parameters")
-    val evaluationDescription = parameters(evaluationDescriptionKey)
-    val ntriples = parameters(ntriplesKey)
-    val spreadsheetUsername = parameters(spreadsheetUsernameKey)
-    val spreadsheetPassword = parameters(spreadsheetPasswordKey)
-    val spreadsheetName = parameters(spreadsheetNameKey)
-    val worksheetName = parameters(worksheetNameKey)
+    val evaluationDescription = parameters("evaluationDescription")
+    //val ntriples = parameters("ntriples")
+    val spreadsheetUsername = parameters("spreadsheetUsername")
+    val spreadsheetPassword = parameters("spreadsheetPassword")
+    val spreadsheetName = parameters("spreadsheetName")
+    val worksheetName = parameters("worksheetName")
+    val splits = parameters("splits")
+    val dictionary = parameters("dictionary")
+    val warmupSeconds = parameters("warmupSeconds").toInt
+
+    var commonResults = parameters
+    JvmWarmup.warmup(warmupSeconds, 20)
+    commonResults += "warmupSeconds" -> warmupSeconds.toString
+
     val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder)
     println("TripleRush has been started.")
-    var commonResults = parameters
     commonResults += "numberOfNodes" -> tr.graph.numberOfNodes.toString
     commonResults += "numberOfWorkers" -> tr.graph.numberOfWorkers.toString
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
     val loadingTime = measureTime {
-      tr.loadNtriples(ntriples)
+      for (splitId <- 0 until 2880) {
+        val splitFile = s"$splits/$splitId.filtered-split"
+        tr.loadBinary(splitFile, Some(splitId))
+        if (splitId % 288 == 279) {
+          println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
+          tr.awaitIdle
+          println(s"Continuing graph loading...")
+        }
+      }
+      Dictionary.loadFromFile(dictionary)
       tr.prepareExecution
     }
 
-    val optimizerInitStart = System.nanoTime
-    val optimizerInitEnd = System.nanoTime
-    val oneHop = DbpediaQueries.oneHopQueries
-
-    commonResults += ((s"optimizerInitialisationTime", roundToMillisecondFraction(optimizerInitEnd - optimizerInitStart).toString))
     commonResults += (("loadingTime", loadingTime.toString))
 
-    println("Starting warm-up...")
-
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
-    for (queryId <- 1 to oneHop.size) {
-      val query = oneHop(queryId - 1)
+    for (queryId <- 1 to DbpediaQueries.twoHopQueries.size) {
+      val query = DbpediaQueries.twoHopQueries(queryId - 1)
       println(s"Running evaluation for query $query.")
       val result = executeEvaluationRun(query, queryId.toString, tr, commonResults)
       resultReporter(result)
@@ -92,10 +93,10 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     }
 
     val twoHopQuery = DbpediaQueries.twoHopQueries.head
-    val twoHopResultsFuture = tr.executeCountingQuery(QuerySpecification.fromSparql(twoHopQuery).get)
-    val result = Await.result(twoHopResultsFuture, 7200.seconds)
-    println(s"Number of two-hop Elvis results: $result")
-    
+    val threeHopResultsFuture = tr.executeCountingQuery(QuerySpecification.fromSparql(DbpediaQueries.threeHopQueries.head).get)
+    val result = Await.result(threeHopResultsFuture, 7200.seconds)
+    println(s"Number of three-hop Elvis results: $result.")
+
     tr.shutdown
   }
 
