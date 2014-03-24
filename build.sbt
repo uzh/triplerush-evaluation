@@ -32,5 +32,10 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-library" % "2.10.3"  % "compile",
   "com.google.collections" % "google-collections" % "1.0",
     "org.apache.jena" % "apache-jena-libs" % "2.11.1" % "compile",
-  "com.sleepycat" % "je" % "5.0.103"
+  "com.sleepycat" % "je" % "5.0.103",
+  "junit" % "junit" % "4.8.2"  % "test",
+  "org.specs2" %% "specs2" % "2.3.3"  % "test",
+  "org.scalacheck" %% "scalacheck" % "1.11.0" % "test",
+  "org.scalatest" %% "scalatest" % "2.1.0" % "test",
+  "org.easymock" % "easymock" % "3.2" % "test"
   )
