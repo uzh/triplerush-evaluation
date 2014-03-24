@@ -45,37 +45,40 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
     println(s"Received parameters $parameters")
     val evaluationDescription = parameters("evaluationDescription")
-    //val ntriples = parameters("ntriples")
+    val ntriples = parameters("ntriples")
     val spreadsheetUsername = parameters("spreadsheetUsername")
     val spreadsheetPassword = parameters("spreadsheetPassword")
     val spreadsheetName = parameters("spreadsheetName")
     val worksheetName = parameters("worksheetName")
-    val splits = parameters("splits")
-    val dictionary = parameters("dictionary")
+    //val splits = parameters("splits")
+    //val dictionary = parameters("dictionary")
     val warmupSeconds = parameters("warmupSeconds").toInt
 
     var commonResults = parameters
-    JvmWarmup.warmup(warmupSeconds, 20)
     commonResults += "warmupSeconds" -> warmupSeconds.toString
 
     val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder)
+
+    JvmWarmup.warmupWithExistingStore(warmupSeconds, 20, tr)
+
     println("TripleRush has been started.")
     commonResults += "numberOfNodes" -> tr.graph.numberOfNodes.toString
     commonResults += "numberOfWorkers" -> tr.graph.numberOfWorkers.toString
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
     val loadingTime = measureTime {
-      for (splitId <- 0 until 2880) {
-        val splitFile = s"$splits/$splitId.filtered-split"
-        tr.loadBinary(splitFile, Some(splitId))
-        if (splitId % 288 == 279) {
-          println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
-          tr.awaitIdle
-          println(s"Continuing graph loading...")
-        }
-      }
-      Dictionary.loadFromFile(dictionary)
+      tr.loadNtriples(ntriples)
+      //      for (splitId <- 0 until 2880) {
+      //        val splitFile = s"$splits/$splitId.filtered-split"
+      //        tr.loadBinary(splitFile, Some(splitId))
+      //        if (splitId % 288 == 279) {
+      //          println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
+      //          tr.awaitIdle
+      //          println(s"Continuing graph loading...")
+      //        }
+      //      }
+      //      Dictionary.loadFromFile(dictionary)
       tr.prepareExecution
     }
 
