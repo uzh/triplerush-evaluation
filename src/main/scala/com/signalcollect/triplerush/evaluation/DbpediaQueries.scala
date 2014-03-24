@@ -21,6 +21,7 @@ package com.signalcollect.triplerush.evaluation
 
 import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TriplePattern
+import scala.collection.mutable.PriorityQueue
 
 object DbpediaQueries {
 
@@ -30,9 +31,9 @@ WHERE {
 		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?T
 }
 """)
-  
+
   val twoHopQueries = List("""
-SELECT ?T
+SELECT ?T ?A
 WHERE {
 		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
 		  ?A <http://dbpedia.org/property/wikilink> ?T
@@ -40,7 +41,7 @@ WHERE {
 """)
 
   val threeHopQueries = List("""
-SELECT ?T
+SELECT ?T ?A ?B
 WHERE {
 		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
 		  ?A <http://dbpedia.org/property/wikilink> ?B .
@@ -48,4 +49,32 @@ WHERE {
 }
 """)
 
+  def topKCounts(topK: Int, counts: Map[Int, Int]): Map[Int, Int] = {
+    implicit val ordering = Ordering.by((value: (Int, Int)) => value._2)
+    val topKQueue = new PriorityQueue[(Int, Int)]()(ordering.reverse)
+    for (count <- counts) {
+      if (topKQueue.size < topK) {
+        topKQueue += count
+      } else {
+        if (ordering.compare(topKQueue.head, count) < 0) {
+          topKQueue.dequeue
+          topKQueue += count
+        }
+      }
+    }
+    topKQueue.toMap
+  }
+
+  /**
+   * Returns an empty map if the sum of all values in the map is zero.
+   * Otherwise, returns a map with normalized counts.
+   */
+  def countMapToDistribution(counts: Map[Int, Int]): Map[Int, Double] = {
+    val totalCount: Double = counts.values.sum
+    if (totalCount == 0) {
+      Map.empty
+    } else {
+      counts.map(c => c._1 -> c._2 / totalCount)
+    }
+  }
 }
