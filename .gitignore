@@ -45,3 +45,5 @@ config-tmp/
 *.split
 
 deployment.config
+
+jena-deployment.config
