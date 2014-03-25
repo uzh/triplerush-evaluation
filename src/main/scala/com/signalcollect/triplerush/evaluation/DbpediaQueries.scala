@@ -25,25 +25,46 @@ import scala.collection.mutable.PriorityQueue
 
 object DbpediaQueries {
 
-  val oneHopQueries = List("""
+  val oneHopQueries = Map("1-Hop-Elvis" -> """
 SELECT ?T
 WHERE {
 		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?T
 }
+""",
+    "1-Hop-Merkel" -> """
+SELECT ?T
+WHERE {
+		  <http://dbpedia.org/resource/Angela_Merkel> <http://dbpedia.org/property/wikilink> ?T
+}
 """)
 
-  val twoHopQueries = List("""
+  val twoHopQueries = Map("2-Hops-Elvis" -> """
 SELECT ?T ?A
 WHERE {
 		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
 		  ?A <http://dbpedia.org/property/wikilink> ?T
 }
+""",
+    "2-Hops-Merkel" -> """
+SELECT ?T ?A
+WHERE {
+		  <http://dbpedia.org/resource/Angela_Merkel> <http://dbpedia.org/property/wikilink> ?A .
+		  ?A <http://dbpedia.org/property/wikilink> ?T
+}
 """)
 
-  val threeHopQueries = List("""
+  val threeHopQueries = Map("3-Hops-Elvis" -> """
 SELECT ?T ?A ?B
 WHERE {
 		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
+		  ?A <http://dbpedia.org/property/wikilink> ?B .
+		  ?B <http://dbpedia.org/property/wikilink> ?T
+}
+""", "3-Hops-Merkel" ->
+    """
+SELECT ?T ?A ?B
+WHERE {
+		  <http://dbpedia.org/resource/Angela_Merkel> <http://dbpedia.org/property/wikilink> ?A .
 		  ?A <http://dbpedia.org/property/wikilink> ?B .
 		  ?B <http://dbpedia.org/property/wikilink> ?T
 }

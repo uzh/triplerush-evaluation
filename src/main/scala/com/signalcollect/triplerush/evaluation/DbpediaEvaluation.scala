@@ -46,13 +46,13 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
     println(s"Received parameters $parameters")
     val evaluationDescription = parameters("evaluationDescription")
-    //val ntriples = parameters("ntriples")
+    val ntriples = parameters("ntriples")
     val spreadsheetUsername = parameters("spreadsheetUsername")
     val spreadsheetPassword = parameters("spreadsheetPassword")
     val spreadsheetName = parameters("spreadsheetName")
     val worksheetName = parameters("worksheetName")
-    val splits = parameters("splits")
-    val dictionary = parameters("dictionary")
+    //val splits = parameters("splits")
+    //val dictionary = parameters("dictionary")
     val warmupSeconds = parameters("warmupSeconds").toInt
 
     var commonResults = parameters
@@ -69,37 +69,42 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
     val loadingTime = measureTime {
-      //tr.loadNtriples(ntriples)
-      for (splitId <- 0 until 2880) {
-        val splitFile = s"$splits/$splitId.filtered-split"
-        tr.loadBinary(splitFile, Some(splitId))
-        if (splitId % 288 == 279) {
-          println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
-          tr.awaitIdle
-          println(s"Continuing graph loading...")
-        }
-      }
-      Dictionary.loadFromFile(dictionary)
+      tr.loadNtriples(ntriples)
+      //      for (splitId <- 0 until 2880) {
+      //        val splitFile = s"$splits/$splitId.filtered-split"
+      //        tr.loadBinary(splitFile, Some(splitId))
+      //        if (splitId % 288 == 279) {
+      //          println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
+      //          tr.awaitIdle
+      //          println(s"Continuing graph loading...")
+      //        }
+      //      }
+      //      Dictionary.loadFromFile(dictionary)
       tr.prepareExecution
     }
+
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(10)
 
     commonResults += (("loadingTime", loadingTime.toString))
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
-    for (queryId <- 1 to DbpediaQueries.twoHopQueries.size) {
-      val query = DbpediaQueries.twoHopQueries(queryId - 1)
-      println(s"Running evaluation for query $query.")
-      val result = executeEvaluationRun(query, queryId.toString, tr, commonResults)
+    for ((queryId, sparql) <- DbpediaQueries.twoHopQueries) {
+      println(s"Running evaluation for query $queryId.")
+      val result = executeEvaluationRun(sparql, queryId.toString, tr, commonResults)
       resultReporter(result)
       println(s"Done running evaluation for query $queryId. Awaiting idle")
       tr.awaitIdle
       println("Idle")
     }
 
-    val twoHopQuery = DbpediaQueries.twoHopQueries.head
-    val threeHopResultsFuture = tr.executeCountingQuery(QuerySpecification.fromSparql(DbpediaQueries.threeHopQueries.head).get)
-    val result = Await.result(threeHopResultsFuture, 7200.seconds)
-    println(s"Number of three-hop Elvis results: $result.")
+    for ((queryId, sparql) <- DbpediaQueries.threeHopQueries) {
+      println(s"Running evaluation for query $queryId.")
+      val result = executeEvaluationRun(sparql, queryId.toString, tr, commonResults)
+      resultReporter(result)
+      println(s"Done running evaluation for query $queryId. Awaiting idle")
+      tr.awaitIdle
+      println("Idle")
+    }
 
     tr.shutdown
   }
@@ -135,7 +140,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     val gcCountDuringQuery = gcCountAfter - gcCountBefore
     val compileTimeAfter = compilations.getTotalCompilationTime
     val compileTimeDuringQuery = compileTimeAfter - compileTimeBefore
-
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(10)
     val optimizingTime = roundToMillisecondFraction(queryStats("optimizingDuration").asInstanceOf[Long])
     runResult += ((s"queryId", queryDescription))
     runResult += ((s"queryCopyCount", queryStats("queryCopyCount").toString))
