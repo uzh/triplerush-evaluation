@@ -36,7 +36,6 @@ import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TripleRush
 import akka.actor.ActorRef
 import com.signalcollect.triplerush.Dictionary
-import com.signalcollect.triplerush.JvmWarmup
 import com.hp.hpl.jena.rdf.model.ModelFactory
 import com.hp.hpl.jena.rdf.model.Model
 import com.hp.hpl.jena.query.QueryFactory
@@ -75,13 +74,32 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
     commonResults += (("loadingTime", loadingTime.toString))
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
-    for ((queryId, sparql) <- DbpediaQueries.twoHopQueries) {
-      println(s"Running evaluation for query $queryId.")
-      val result = executeEvaluationRun(sparql, queryId.toString, jena, commonResults)
-      resultReporter(result)
-      println(s"Done running evaluation for query $queryId. Awaiting idle")
-      println("Idle")
-    }
+
+    jena.close
+    
+//    for ((queryId, sparql) <- DbpediaQueries.oneHopQueries) {
+//      println(s"Running evaluation for query $queryId.")
+//      val result = executeEvaluationRun(sparql, queryId, jena, commonResults)
+//      resultReporter(result)
+//      println(s"Done running evaluation for query $queryId. Awaiting idle")
+//      println("Idle")
+//    }
+//
+//    for ((queryId, sparql) <- DbpediaQueries.twoHopQueries) {
+//      println(s"Running evaluation for query $queryId.")
+//      val result = executeEvaluationRun(sparql, queryId, jena, commonResults)
+//      resultReporter(result)
+//      println(s"Done running evaluation for query $queryId. Awaiting idle")
+//      println("Idle")
+//    }
+//
+//    for ((queryId, sparql) <- DbpediaQueries.threeHopQueries) {
+//      println(s"Running evaluation for query $queryId.")
+//      val result = executeEvaluationRun(sparql, queryId, jena, commonResults)
+//      resultReporter(result)
+//      println(s"Done running evaluation for query $queryId. Awaiting idle")
+//      println("Idle")
+//    }
   }
 
   def executeEvaluationRun(queryString: String, queryDescription: String, jena: Model, commonResults: Map[String, String]): Map[String, String] = {

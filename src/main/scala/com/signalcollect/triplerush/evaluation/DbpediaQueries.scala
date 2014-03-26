@@ -25,50 +25,56 @@ import scala.collection.mutable.PriorityQueue
 
 object DbpediaQueries {
 
-  val oneHopQueries = Map("1-Hop-Elvis" -> """
+  val evalEntities = List(
+    "Elvis_Presley",
+    "Angela_Merkel",
+    "Edmond_Halley",
+    "Ridley_Scott")
+
+  val warmupEntities = List(
+    "Nick_Carter",
+    "Briney_Spears",
+    "Albert_Einstein",
+    "Joseph_Stalin",
+    "Donald_Knuth",
+    "Napoleon_Bonaparte")
+
+  def oneHop(entity: String): (String, String) = {
+    { entity + "-oneHop" } -> s"""
 SELECT ?T
 WHERE {
-		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?T
+		  <http://dbpedia.org/resource/$entity> <http://dbpedia.org/property/wikilink> ?T
 }
-""",
-    "1-Hop-Merkel" -> """
-SELECT ?T
-WHERE {
-		  <http://dbpedia.org/resource/Angela_Merkel> <http://dbpedia.org/property/wikilink> ?T
-}
-""")
+"""
+  }
 
-  val twoHopQueries = Map("2-Hops-Elvis" -> """
+  def twoHops(entity: String): (String, String) = {
+    { entity + "-twoHops" } -> s"""
 SELECT ?T ?A
 WHERE {
-		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
+		  <http://dbpedia.org/resource/$entity> <http://dbpedia.org/property/wikilink> ?A .
 		  ?A <http://dbpedia.org/property/wikilink> ?T
 }
-""",
-    "2-Hops-Merkel" -> """
-SELECT ?T ?A
-WHERE {
-		  <http://dbpedia.org/resource/Angela_Merkel> <http://dbpedia.org/property/wikilink> ?A .
-		  ?A <http://dbpedia.org/property/wikilink> ?T
-}
-""")
+"""
+  }
 
-  val threeHopQueries = Map("3-Hops-Elvis" -> """
+  def threeHops(entity: String): (String, String) = {
+    { entity + "-threeHops" } -> s"""
 SELECT ?T ?A ?B
 WHERE {
-		  <http://dbpedia.org/resource/Elvis_Presley> <http://dbpedia.org/property/wikilink> ?A .
+		  <http://dbpedia.org/resource/$entity> <http://dbpedia.org/property/wikilink> ?A .
 		  ?A <http://dbpedia.org/property/wikilink> ?B .
 		  ?B <http://dbpedia.org/property/wikilink> ?T
 }
-""", "3-Hops-Merkel" ->
-    """
-SELECT ?T ?A ?B
-WHERE {
-		  <http://dbpedia.org/resource/Angela_Merkel> <http://dbpedia.org/property/wikilink> ?A .
-		  ?A <http://dbpedia.org/property/wikilink> ?B .
-		  ?B <http://dbpedia.org/property/wikilink> ?T
-}
-""")
+"""
+  }
+
+  val eval1Hops = evalEntities.map(oneHop)
+  val warmup1Hops = warmupEntities.map(oneHop)
+  val eval2Hops = evalEntities.map(twoHops)
+  val warmup2Hops = warmupEntities.map(twoHops)
+  val eval3Hops = evalEntities.map(threeHops)
+  val warmup3Hops = warmupEntities.map(threeHops)
 
   def topKCounts(topK: Int, counts: Map[Int, Int]): Map[Int, Int] = {
     implicit val ordering = Ordering.by((value: (Int, Int)) => value._2)

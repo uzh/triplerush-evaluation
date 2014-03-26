@@ -36,7 +36,6 @@ import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TripleRush
 import akka.actor.ActorRef
 import com.signalcollect.triplerush.Dictionary
-import com.signalcollect.triplerush.JvmWarmup
 import com.signalcollect.triplerush.optimizers.NoOptimizerCreator
 
 class DbpediaEvaluation extends TorqueDeployableAlgorithm {
@@ -53,15 +52,14 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     val worksheetName = parameters("worksheetName")
     //val splits = parameters("splits")
     //val dictionary = parameters("dictionary")
-    val warmupSeconds = parameters("warmupSeconds").toInt
+    //val warmupSeconds = parameters("warmupSeconds").toInt
+    val warmupRuns = parameters("warmupRuns").toInt
 
     var commonResults = parameters
-    commonResults += "warmupSeconds" -> warmupSeconds.toString
+    commonResults += "warmupSeconds" -> warmupRuns.toString
 
     val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder = graphBuilder, optimizerCreator = NoOptimizerCreator)
-
-    JvmWarmup.warmupWithExistingStore(warmupSeconds, 20, tr)
 
     println("TripleRush has been started.")
     commonResults += "numberOfNodes" -> tr.graph.numberOfNodes.toString
@@ -70,40 +68,47 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
 
     val loadingTime = measureTime {
       tr.loadNtriples(ntriples)
-      //      for (splitId <- 0 until 2880) {
-      //        val splitFile = s"$splits/$splitId.filtered-split"
-      //        tr.loadBinary(splitFile, Some(splitId))
-      //        if (splitId % 288 == 279) {
-      //          println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
-      //          tr.awaitIdle
-      //          println(s"Continuing graph loading...")
-      //        }
-      //      }
-      //      Dictionary.loadFromFile(dictionary)
       tr.prepareExecution
     }
 
-    JvmWarmup.sleepUntilGcInactiveForXSeconds(10)
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
 
     commonResults += (("loadingTime", loadingTime.toString))
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
-    for ((queryId, sparql) <- DbpediaQueries.twoHopQueries) {
-      println(s"Running evaluation for query $queryId.")
-      val result = executeEvaluationRun(sparql, queryId.toString, tr, commonResults)
-      resultReporter(result)
-      println(s"Done running evaluation for query $queryId. Awaiting idle")
-      tr.awaitIdle
-      println("Idle")
+
+    for (i <- (0 to warmupRuns)) {
+      warmup(DbpediaQueries.warmup1Hops)
+      warmup(DbpediaQueries.warmup2Hops)
+      warmup(DbpediaQueries.warmup3Hops)
     }
 
-    for ((queryId, sparql) <- DbpediaQueries.threeHopQueries) {
-      println(s"Running evaluation for query $queryId.")
-      val result = executeEvaluationRun(sparql, queryId.toString, tr, commonResults)
-      resultReporter(result)
-      println(s"Done running evaluation for query $queryId. Awaiting idle")
-      tr.awaitIdle
-      println("Idle")
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
+
+    evaluate(DbpediaQueries.eval1Hops)
+    evaluate(DbpediaQueries.eval2Hops)
+    evaluate(DbpediaQueries.eval3Hops)
+
+    def warmup(queries: Traversable[(String, String)]) {
+      for ((queryId, sparql) <- queries) {
+        println(s"Warming up with query $queryId.")
+        val result = executeEvaluationRun(sparql, queryId.toString, tr, commonResults)
+        println(s"Done running query $queryId. Awaiting idle")
+        tr.awaitIdle
+        println("Idle")
+      }
+    }
+
+    def evaluate(queries: Traversable[(String, String)]) {
+      for ((queryId, sparql) <- queries) {
+        println(s"Running evaluation for query $queryId.")
+        val result = executeEvaluationRun(sparql, queryId.toString, tr, commonResults)
+        resultReporter(result)
+        println(s"Done running evaluation for query $queryId. Awaiting idle")
+        tr.awaitIdle
+        JvmWarmup.sleepUntilGcInactiveForXSeconds(10)
+        println("Idle")
+      }
     }
 
     tr.shutdown
@@ -131,8 +136,9 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     val (queryResultFuture, queryStatsFuture) = tr.executeAdvancedQuery(query.get)
     val queryResult = Await.result(queryResultFuture, 7200.seconds)
     val queryStats = Await.result(queryStatsFuture, 10.seconds)
+    val numberOfResults = queryResult.size
     val finishTime = System.nanoTime
-    println("Number of one results: " + queryResult.size)
+    println("Number of one results: " + numberOfResults)
     val executionTime = roundToMillisecondFraction(finishTime - startTime)
     val gcTimeAfter = getGcCollectionTime(gcs)
     val gcCountAfter = getGcCollectionCount(gcs)
@@ -140,7 +146,6 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     val gcCountDuringQuery = gcCountAfter - gcCountBefore
     val compileTimeAfter = compilations.getTotalCompilationTime
     val compileTimeDuringQuery = compileTimeAfter - compileTimeBefore
-    JvmWarmup.sleepUntilGcInactiveForXSeconds(10)
     val optimizingTime = roundToMillisecondFraction(queryStats("optimizingDuration").asInstanceOf[Long])
     runResult += ((s"queryId", queryDescription))
     runResult += ((s"queryCopyCount", queryStats("queryCopyCount").toString))
