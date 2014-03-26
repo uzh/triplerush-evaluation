@@ -36,8 +36,7 @@ object DbpediaQueries {
     "Britney_Spears",
     "Albert_Einstein",
     "Joseph_Stalin",
-    "Donald_Knuth",
-    "Napoleon_Bonaparte")
+    "Donald_Knuth")
 
   def oneHop(entity: String): (String, String) = {
     { entity + "-oneHop" } -> s"""
