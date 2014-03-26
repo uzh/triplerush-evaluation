@@ -33,7 +33,7 @@ object DbpediaQueries {
 
   val warmupEntities = List(
     "Nick_Carter",
-    "Briney_Spears",
+    "Britney_Spears",
     "Albert_Einstein",
     "Joseph_Stalin",
     "Donald_Knuth",
