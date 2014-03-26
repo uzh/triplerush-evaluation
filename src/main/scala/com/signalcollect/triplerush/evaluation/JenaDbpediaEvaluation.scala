@@ -41,6 +41,9 @@ import com.hp.hpl.jena.rdf.model.Model
 import com.hp.hpl.jena.query.QueryFactory
 import com.hp.hpl.jena.query.QueryExecutionFactory
 import collection.JavaConversions._
+import scala.collection.mutable.PriorityQueue
+import com.hp.hpl.jena.query.ResultSet
+import com.signalcollect.util.IntValueHashMap
 
 class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
 
@@ -58,10 +61,11 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
     val spreadsheetPassword = parameters("spreadsheetPassword")
     val spreadsheetName = parameters("spreadsheetName")
     val worksheetName = parameters("worksheetName")
-    val warmupSeconds = parameters("warmupSeconds").toInt
+    //val warmupSeconds = parameters("warmupSeconds").toInt
+    val warmupRuns = parameters("warmupRuns").toInt
 
     var commonResults = parameters
-    commonResults += "warmupSeconds" -> warmupSeconds.toString
+    commonResults += "warmupRuns" -> warmupRuns.toString
 
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
@@ -75,31 +79,75 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
 
+    for (i <- (0 to warmupRuns)) {
+      warmup(DbpediaQueries.warmup1Hops)
+      warmup(DbpediaQueries.warmup2Hops)
+      warmup(DbpediaQueries.warmup3Hops)
+    }
+
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
+
+    evaluate(DbpediaQueries.eval1Hops)
+    evaluate(DbpediaQueries.eval2Hops)
+    evaluate(DbpediaQueries.eval3Hops)
+
+    def warmup(queries: Traversable[(String, String)]) {
+      for ((queryId, sparql) <- queries) {
+        println(s"Warming up with query $queryId.")
+        val result = executeEvaluationRun(sparql, queryId.toString, jena, commonResults)
+        println(s"Done running query $queryId. Awaiting idle")
+      }
+    }
+
+    def evaluate(queries: Traversable[(String, String)]) {
+      for ((queryId, sparql) <- queries) {
+        println(s"Running evaluation for query $queryId.")
+        val result = executeEvaluationRun(sparql, queryId.toString, jena, commonResults)
+        resultReporter(result)
+        println(s"Done running evaluation for query $queryId. Awaiting idle")
+        JvmWarmup.sleepUntilGcInactiveForXSeconds(10)
+      }
+    }
+
     jena.close
-    
-//    for ((queryId, sparql) <- DbpediaQueries.oneHopQueries) {
-//      println(s"Running evaluation for query $queryId.")
-//      val result = executeEvaluationRun(sparql, queryId, jena, commonResults)
-//      resultReporter(result)
-//      println(s"Done running evaluation for query $queryId. Awaiting idle")
-//      println("Idle")
-//    }
-//
-//    for ((queryId, sparql) <- DbpediaQueries.twoHopQueries) {
-//      println(s"Running evaluation for query $queryId.")
-//      val result = executeEvaluationRun(sparql, queryId, jena, commonResults)
-//      resultReporter(result)
-//      println(s"Done running evaluation for query $queryId. Awaiting idle")
-//      println("Idle")
-//    }
-//
-//    for ((queryId, sparql) <- DbpediaQueries.threeHopQueries) {
-//      println(s"Running evaluation for query $queryId.")
-//      val result = executeEvaluationRun(sparql, queryId, jena, commonResults)
-//      resultReporter(result)
-//      println(s"Done running evaluation for query $queryId. Awaiting idle")
-//      println("Idle")
-//    }
+
+  }
+
+  def transformResults(i: ResultSet): (Int, Map[String, Double]) = {
+    val countsMap = new IntValueHashMap[String]
+    var numberOfResults = 0
+    while (i.hasNext) {
+      numberOfResults += 1
+      val result = i.next
+      val binding = result.get("T").toString
+      countsMap.increment(binding)
+    }
+    val topK = 5
+    implicit val ordering = Ordering.by((value: (String, Int)) => value._2)
+    val topKQueue = new PriorityQueue[(String, Int)]()(ordering.reverse)
+    countsMap.foreach { (id, count) =>
+      val tuple = (id, count)
+      if (topKQueue.size < topK) {
+        topKQueue += tuple
+      } else {
+        if (ordering.compare(topKQueue.head, tuple) < 0) {
+          topKQueue.dequeue
+          topKQueue += tuple
+        }
+      }
+    }
+    val topKCountsMap = topKQueue.toMap
+    val topKEntities = countMapToDistribution(topKCountsMap)
+    (numberOfResults, topKEntities)
+  }
+
+  def countMapToDistribution(counts: Map[String, Int]): Map[String, Double] = {
+    val totalCount: Double = counts.values.sum
+    if (totalCount == 0) {
+      Map.empty
+    } else {
+      counts.map(c => c._1 -> c._2 / totalCount)
+    }
   }
 
   def executeEvaluationRun(queryString: String, queryDescription: String, jena: Model, commonResults: Map[String, String]): Map[String, String] = {
@@ -123,10 +171,7 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
     val query = QueryFactory.create(queryString)
     val qe = QueryExecutionFactory.create(query, jena)
     val results = qe.execSelect
-    var numberOfResults = 0
-    for (result <- results) {
-      numberOfResults += 1
-    }
+    val (numberOfResults, topKEntities) = transformResults(results)
     val finishTime = System.nanoTime
     println("Number of results: " + numberOfResults)
     val executionTime = roundToMillisecondFraction(finishTime - startTime)
@@ -136,8 +181,7 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
     val gcCountDuringQuery = gcCountAfter - gcCountBefore
     val compileTimeAfter = compilations.getTotalCompilationTime
     val compileTimeDuringQuery = compileTimeAfter - compileTimeBefore
-    JvmWarmup.sleepUntilGcInactiveForXSeconds(10)
-
+    runResult += ((s"topK", topKEntities.toString))
     runResult += ((s"queryId", queryDescription))
     runResult += ((s"results", numberOfResults.toString))
     runResult += ((s"executionTime", executionTime.toString))

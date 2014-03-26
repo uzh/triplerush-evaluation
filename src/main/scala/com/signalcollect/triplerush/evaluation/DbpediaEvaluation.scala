@@ -19,24 +19,26 @@
 
 package com.signalcollect.triplerush.evaluation
 
-import java.io.File
-import java.lang.management.GarbageCollectorMXBean
 import java.lang.management.ManagementFactory
 import java.util.Date
-import scala.Option.option2Iterable
+
 import scala.collection.JavaConversions.asScalaBuffer
-import scala.collection.JavaConversions.collectionAsScalaIterable
-import scala.concurrent.Await
-import scala.concurrent.duration.DurationInt
-import scala.io.Source
-import scala.reflect.runtime.universe
+import scala.collection.mutable.PriorityQueue
+
 import com.signalcollect.GraphBuilder
 import com.signalcollect.deployment.TorqueDeployableAlgorithm
+import com.signalcollect.triplerush.Dictionary
 import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TripleRush
-import akka.actor.ActorRef
-import com.signalcollect.triplerush.Dictionary
 import com.signalcollect.triplerush.optimizers.NoOptimizerCreator
+import com.signalcollect.util.IntIntHashMap
+
+import EvalHelpers.bytesToGigabytes
+import EvalHelpers.getGcCollectionCount
+import EvalHelpers.getGcCollectionTime
+import EvalHelpers.measureTime
+import EvalHelpers.roundToMillisecondFraction
+import akka.actor.ActorRef
 
 class DbpediaEvaluation extends TorqueDeployableAlgorithm {
 
@@ -56,7 +58,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     val warmupRuns = parameters("warmupRuns").toInt
 
     var commonResults = parameters
-    commonResults += "warmupSeconds" -> warmupRuns.toString
+    commonResults += "warmupRuns" -> warmupRuns.toString
 
     val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder = graphBuilder, optimizerCreator = NoOptimizerCreator)
@@ -114,6 +116,37 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     tr.shutdown
   }
 
+  def transformResults(query: QuerySpecification, i: Iterator[Array[Int]]): (Int, Map[String, Double]) = {
+    val targetId = query.variableNameToId.get("T")
+    val targetIndex = math.abs(targetId) - 1
+    val countsMap = new IntIntHashMap
+    var numberOfResults = 0
+    while (i.hasNext) {
+      numberOfResults += 1
+      val result = i.next
+      val binding = result(targetIndex)
+      countsMap.increment(binding)
+    }
+    val topK = 5
+    implicit val ordering = Ordering.by((value: (Int, Int)) => value._2)
+    val topKQueue = new PriorityQueue[(Int, Int)]()(ordering.reverse)
+    countsMap.foreach { (id, count) =>
+      val tuple = (id, count)
+      if (topKQueue.size < topK) {
+        topKQueue += tuple
+      } else {
+        if (ordering.compare(topKQueue.head, tuple) < 0) {
+          topKQueue.dequeue
+          topKQueue += tuple
+        }
+      }
+    }
+    val topKCountsMap = topKQueue.toMap
+    val topKResults = DbpediaQueries.countMapToDistribution(topKCountsMap)
+    val topKEntities = topKResults.map(entry => (Dictionary(entry._1), entry._2))
+    (numberOfResults, topKEntities)
+  }
+
   def executeEvaluationRun(queryString: String, queryDescription: String, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
@@ -132,13 +165,12 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     runResult += ((s"freeMemoryBefore", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
     val startTime = System.nanoTime
-    val query = QuerySpecification.fromSparql(queryString)
-    val (queryResultFuture, queryStatsFuture) = tr.executeAdvancedQuery(query.get)
-    val queryResult = Await.result(queryResultFuture, 7200.seconds)
-    val queryStats = Await.result(queryStatsFuture, 10.seconds)
-    val numberOfResults = queryResult.size
+    val queryOption = QuerySpecification.fromSparql(queryString)
+    val query = queryOption.get
+    val resultIterator = tr.resultIteratorForQuery(query)
+    val (numberOfResults, topKEntities) = transformResults(query, resultIterator)
     val finishTime = System.nanoTime
-    println("Number of one results: " + numberOfResults)
+    println("Number of results: " + numberOfResults)
     val executionTime = roundToMillisecondFraction(finishTime - startTime)
     val gcTimeAfter = getGcCollectionTime(gcs)
     val gcCountAfter = getGcCollectionCount(gcs)
@@ -146,14 +178,10 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     val gcCountDuringQuery = gcCountAfter - gcCountBefore
     val compileTimeAfter = compilations.getTotalCompilationTime
     val compileTimeDuringQuery = compileTimeAfter - compileTimeBefore
-    val optimizingTime = roundToMillisecondFraction(queryStats("optimizingDuration").asInstanceOf[Long])
+    runResult += ((s"topK", topKEntities.toString))
     runResult += ((s"queryId", queryDescription))
-    runResult += ((s"queryCopyCount", queryStats("queryCopyCount").toString))
-    runResult += ((s"query", queryStats("optimizedQuery").toString))
-    runResult += ((s"exception", queryStats("exception").toString))
-    runResult += ((s"results", queryResult.size.toString))
+    runResult += ((s"results", numberOfResults.toString))
     runResult += ((s"executionTime", executionTime.toString))
-    runResult += ((s"optimizingTime", optimizingTime.toString))
     runResult += ((s"totalMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
     runResult += ((s"freeMemory", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
