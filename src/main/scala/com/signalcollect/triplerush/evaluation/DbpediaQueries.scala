@@ -103,4 +103,13 @@ WHERE {
       counts.map(c => c._1 -> c._2 / totalCount)
     }
   }
+
+  def normalize[@specialized(Int) Key](counts: Map[Key, Double]): Map[Key, Double] = {
+    val totalCount: Double = counts.values.sum
+    if (totalCount == 0) {
+      Map.empty
+    } else {
+      counts.map(c => c._1 -> c._2 / totalCount)
+    }
+  }
 }

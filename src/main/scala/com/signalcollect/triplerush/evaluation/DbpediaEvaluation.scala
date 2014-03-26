@@ -21,10 +21,8 @@ package com.signalcollect.triplerush.evaluation
 
 import java.lang.management.ManagementFactory
 import java.util.Date
-
 import scala.collection.JavaConversions.asScalaBuffer
 import scala.collection.mutable.PriorityQueue
-
 import com.signalcollect.GraphBuilder
 import com.signalcollect.deployment.TorqueDeployableAlgorithm
 import com.signalcollect.triplerush.Dictionary
@@ -32,19 +30,22 @@ import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TripleRush
 import com.signalcollect.triplerush.optimizers.NoOptimizerCreator
 import com.signalcollect.util.IntIntHashMap
-
 import EvalHelpers.bytesToGigabytes
 import EvalHelpers.getGcCollectionCount
 import EvalHelpers.getGcCollectionTime
 import EvalHelpers.measureTime
 import EvalHelpers.roundToMillisecondFraction
 import akka.actor.ActorRef
+import com.signalcollect.triplerush.TriplePattern
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 
 class DbpediaEvaluation extends TorqueDeployableAlgorithm {
 
   import EvalHelpers._
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
+    println("TRIPLERUSH EVAL")
     println(s"Received parameters $parameters")
     val evaluationDescription = parameters("evaluationDescription")
     val ntriples = parameters("ntriples")
@@ -116,8 +117,9 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     tr.shutdown
   }
 
-  def transformResults(query: QuerySpecification, i: Iterator[Array[Int]]): (Int, Map[String, Double]) = {
+  def transformResults(tr: TripleRush, query: QuerySpecification, i: Iterator[Array[Int]]): (Int, Map[String, Double]) = {
     val targetId = query.variableNameToId.get("T")
+    val wikilinkId = Dictionary("http://dbpedia.org/property/wikilink")
     val targetIndex = math.abs(targetId) - 1
     val countsMap = new IntIntHashMap
     var numberOfResults = 0
@@ -127,11 +129,16 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
       val binding = result(targetIndex)
       countsMap.increment(binding)
     }
+    val countsDividedByIncomingEdges = countsMap.toScalaMap.par.map {
+      case (id, count) =>
+        val incomingEdgeCountFuture = tr.executeCountingQuery(QuerySpecification(Array(TriplePattern(-1, wikilinkId, id))))
+        val incomingEdgeCount = Await.result(incomingEdgeCountFuture, 7200.seconds).get // We know it has an incoming edge, because otherwise it would not have been reached.
+        (id, count.toDouble / incomingEdgeCount)
+    }.seq
     val topK = 5
-    implicit val ordering = Ordering.by((value: (Int, Int)) => value._2)
-    val topKQueue = new PriorityQueue[(Int, Int)]()(ordering.reverse)
-    countsMap.foreach { (id, count) =>
-      val tuple = (id, count)
+    implicit val ordering = Ordering.by((value: (Int, Double)) => value._2)
+    val topKQueue = new PriorityQueue[(Int, Double)]()(ordering.reverse)
+    countsDividedByIncomingEdges.foreach { tuple =>
       if (topKQueue.size < topK) {
         topKQueue += tuple
       } else {
@@ -142,8 +149,8 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
       }
     }
     val topKCountsMap = topKQueue.toMap
-    val topKResults = DbpediaQueries.countMapToDistribution(topKCountsMap)
-    val topKEntities = topKResults.map(entry => (Dictionary(entry._1), entry._2))
+    val topKResults = DbpediaQueries.normalize(topKCountsMap)
+    val topKEntities = topKResults.map(entry => (Dictionary.unsafeDecode(entry._1), entry._2))
     (numberOfResults, topKEntities)
   }
 
@@ -168,7 +175,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     val queryOption = QuerySpecification.fromSparql(queryString)
     val query = queryOption.get
     val resultIterator = tr.resultIteratorForQuery(query)
-    val (numberOfResults, topKEntities) = transformResults(query, resultIterator)
+    val (numberOfResults, topKEntities) = transformResults(tr, query, resultIterator)
     val finishTime = System.nanoTime
     println("Number of results: " + numberOfResults)
     val executionTime = roundToMillisecondFraction(finishTime - startTime)

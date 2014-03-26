@@ -44,15 +44,18 @@ import collection.JavaConversions._
 import scala.collection.mutable.PriorityQueue
 import com.hp.hpl.jena.query.ResultSet
 import com.signalcollect.util.IntValueHashMap
+import akka.actor.PoisonPill
+import com.signalcollect.configuration.ActorSystemRegistry
 
 class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
 
   import EvalHelpers._
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
-    // Shut down the actors.
-    val g = GraphBuilder.withPreallocatedNodes(nodeActors).build
-    g.shutdown
+    println("JENA EVAL")
+
+    // Shut down the actor system.
+    ActorSystemRegistry.retrieve("SignalCollect").foreach(_.shutdown)
 
     println(s"Received parameters $parameters")
     val evaluationDescription = parameters("evaluationDescription")
@@ -113,7 +116,7 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
 
   }
 
-  def transformResults(i: ResultSet): (Int, Map[String, Double]) = {
+  def transformResults(jena: Model, i: ResultSet): (Int, Map[String, Double]) = {
     val countsMap = new IntValueHashMap[String]
     var numberOfResults = 0
     while (i.hasNext) {
@@ -122,11 +125,20 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
       val binding = result.get("T").toString
       countsMap.increment(binding)
     }
+    val countsDividedByIncomingEdges = countsMap.toScalaMap.par.map {
+      case (id, count) =>
+        val sparql = s"SELECT (count(?from) as ?count) { ?from <http://dbpedia.org/property/wikilink> <$id> .}"
+        val query = QueryFactory.create(sparql)
+        val qe = QueryExecutionFactory.create(query, jena)
+        val results = qe.execSelect
+        val incomingEdgeCount = results.next.getLiteral("count").getLong
+        (id, count.toDouble / incomingEdgeCount)
+    }.seq
+
     val topK = 5
-    implicit val ordering = Ordering.by((value: (String, Int)) => value._2)
-    val topKQueue = new PriorityQueue[(String, Int)]()(ordering.reverse)
-    countsMap.foreach { (id, count) =>
-      val tuple = (id, count)
+    implicit val ordering = Ordering.by((value: (String, Double)) => value._2)
+    val topKQueue = new PriorityQueue[(String, Double)]()(ordering.reverse)
+    countsDividedByIncomingEdges.foreach { tuple =>
       if (topKQueue.size < topK) {
         topKQueue += tuple
       } else {
@@ -137,7 +149,7 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
       }
     }
     val topKCountsMap = topKQueue.toMap
-    val topKEntities = countMapToDistribution(topKCountsMap)
+    val topKEntities = DbpediaQueries.normalize(topKCountsMap)
     (numberOfResults, topKEntities)
   }
 
@@ -171,7 +183,7 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
     val query = QueryFactory.create(queryString)
     val qe = QueryExecutionFactory.create(query, jena)
     val results = qe.execSelect
-    val (numberOfResults, topKEntities) = transformResults(results)
+    val (numberOfResults, topKEntities) = transformResults(jena, results)
     val finishTime = System.nanoTime
     println("Number of results: " + numberOfResults)
     val executionTime = roundToMillisecondFraction(finishTime - startTime)
