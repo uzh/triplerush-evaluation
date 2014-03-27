@@ -129,16 +129,19 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
       val binding = result(targetIndex)
       countsMap.increment(binding)
     }
-    val countsDividedByIncomingEdges = countsMap.toScalaMap.par.map {
-      case (id, count) =>
-        val incomingEdgeCountFuture = tr.executeCountingQuery(QuerySpecification(Array(TriplePattern(-1, wikilinkId, id))))
-        val incomingEdgeCount = Await.result(incomingEdgeCountFuture, 7200.seconds).get // We know it has an incoming edge, because otherwise it would not have been reached.
-        (id, count.toDouble / incomingEdgeCount)
-    }.seq
-    val topK = 5
-    implicit val ordering = Ordering.by((value: (Int, Double)) => value._2)
-    val topKQueue = new PriorityQueue[(Int, Double)]()(ordering.reverse)
-    countsDividedByIncomingEdges.foreach { tuple =>
+//    val countsDividedByIncomingEdges = countsMap.toScalaMap.par.map {
+//      case (id, count) =>
+////        val incomingEdgeCountFuture = tr.executeCountingQuery(QuerySpecification(Array(TriplePattern(-1, wikilinkId, id))))
+////        val incomingEdgeCount = Await.result(incomingEdgeCountFuture, 7200.seconds).get // We know it has an incoming edge, because otherwise it would not have been reached.
+////        val incomingEdgesAdjustedCount = count.toDouble / (incomingEdgeCount.toDouble / numberOfResults)
+////        println(s"${Dictionary(id)}: $incomingEdgeCount incoming edges, $count paths incomingEdgesAdjustedCount=$incomingEdgesAdjustedCount")
+//        (id, incomingEdgesAdjustedCount)
+//    }.seq
+    val topK = 10
+    implicit val ordering = Ordering.by((value: (Int, Int)) => value._2)
+    val topKQueue = new PriorityQueue[(Int, Int)]()(ordering.reverse)
+    countsMap.foreach { (id, count) =>
+      val tuple = (id, count)
       if (topKQueue.size < topK) {
         topKQueue += tuple
       } else {
@@ -149,7 +152,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
       }
     }
     val topKCountsMap = topKQueue.toMap
-    val topKResults = DbpediaQueries.normalize(topKCountsMap)
+    val topKResults = DbpediaQueries.countMapToDistribution(topKCountsMap)
     val topKEntities = topKResults.map(entry => (Dictionary.unsafeDecode(entry._1), entry._2))
     (numberOfResults, topKEntities)
   }

@@ -125,20 +125,21 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
       val binding = result.get("T").toString
       countsMap.increment(binding)
     }
-    val countsDividedByIncomingEdges = countsMap.toScalaMap.par.map {
-      case (id, count) =>
-        val sparql = s"SELECT (count(?from) as ?count) { ?from <http://dbpedia.org/property/wikilink> <$id> .}"
-        val query = QueryFactory.create(sparql)
-        val qe = QueryExecutionFactory.create(query, jena)
-        val results = qe.execSelect
-        val incomingEdgeCount = results.next.getLiteral("count").getLong
-        (id, count.toDouble / incomingEdgeCount)
-    }.seq
+//    val countsDividedByIncomingEdges = countsMap.toScalaMap.par.map {
+//      case (id, count) =>
+//        val sparql = s"SELECT (count(?from) as ?count) { ?from <http://dbpedia.org/property/wikilink> <$id> .}"
+//        val query = QueryFactory.create(sparql)
+//        val qe = QueryExecutionFactory.create(query, jena)
+//        val results = qe.execSelect
+//        val incomingEdgeCount = results.next.getLiteral("count").getLong
+//        (id, count.toDouble / incomingEdgeCount)
+//    }.seq
 
-    val topK = 5
-    implicit val ordering = Ordering.by((value: (String, Double)) => value._2)
-    val topKQueue = new PriorityQueue[(String, Double)]()(ordering.reverse)
-    countsDividedByIncomingEdges.foreach { tuple =>
+    val topK = 10
+    implicit val ordering = Ordering.by((value: (String, Int)) => value._2)
+    val topKQueue = new PriorityQueue[(String, Int)]()(ordering.reverse)
+    countsMap.foreach { (id, count) =>
+      val tuple = (id, count)
       if (topKQueue.size < topK) {
         topKQueue += tuple
       } else {
@@ -149,7 +150,7 @@ class JenaDbpediaEvaluation extends TorqueDeployableAlgorithm {
       }
     }
     val topKCountsMap = topKQueue.toMap
-    val topKEntities = DbpediaQueries.normalize(topKCountsMap)
+    val topKEntities = DbpediaQueries.countMapToDistribution(topKCountsMap)
     (numberOfResults, topKEntities)
   }
 

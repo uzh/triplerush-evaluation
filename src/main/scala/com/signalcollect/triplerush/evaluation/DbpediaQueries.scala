@@ -95,7 +95,7 @@ WHERE {
    * Returns an empty map if the sum of all values in the map is zero.
    * Otherwise, returns a map with normalized counts.
    */
-  def countMapToDistribution(counts: Map[Int, Int]): Map[Int, Double] = {
+  def countMapToDistribution[Key](counts: Map[Key, Int]): Map[Key, Double] = {
     val totalCount: Double = counts.values.sum
     if (totalCount == 0) {
       Map.empty
@@ -104,7 +104,7 @@ WHERE {
     }
   }
 
-  def normalize[@specialized(Int) Key](counts: Map[Key, Double]): Map[Key, Double] = {
+  def normalize[Key](counts: Map[Key, Double]): Map[Key, Double] = {
     val totalCount: Double = counts.values.sum
     if (totalCount == 0) {
       Map.empty
