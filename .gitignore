@@ -47,3 +47,5 @@ config-tmp/
 deployment.config
 
 jena-deployment.config
+
+sesame-deployment.config
