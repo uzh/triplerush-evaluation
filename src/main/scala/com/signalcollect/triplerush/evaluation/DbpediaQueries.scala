@@ -68,6 +68,18 @@ WHERE {
 """
   }
 
+  def oneHopQueryFromEntity(entity: String) = {
+    oneHop(entity)._2
+  }
+  
+  def twoHopQueryFromEntity(entity: String) = {
+    twoHops(entity)._2
+  }
+  
+  def threeHopQueryFromEntity(entity: String) = {
+    threeHops(entity)._2
+  }
+  
   val eval1Hops = evalEntities.map(oneHop)
   val warmup1Hops = warmupEntities.map(oneHop)
   val eval2Hops = evalEntities.map(twoHops)
