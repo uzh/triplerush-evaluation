@@ -38,5 +38,6 @@ libraryDependencies ++= Seq(
   "org.specs2" %% "specs2" % "2.3.3"  % "test",
   "org.scalacheck" %% "scalacheck" % "1.11.0" % "test",
   "org.scalatest" %% "scalatest" % "2.1.0" % "test",
-  "org.easymock" % "easymock" % "3.2" % "test"
+  "org.easymock" % "easymock" % "3.2" % "test",
+  "net.databinder" %% "dispatch-http" % "0.8.10"
   )
