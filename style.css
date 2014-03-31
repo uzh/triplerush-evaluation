@@ -1,0 +1,123 @@
+@import
+	url(http://fonts.googleapis.com/css?family=Libre+Baskerville:400,700,400italic)
+	;
+
+@import url(http://fonts.googleapis.com/css?family=Open+Sans:700);
+
+body,html,p,form,h1,h2,h3,ul,li {
+	margin: 0px;
+	padding: 0px;
+}
+
+body,html {
+	text-align: center;
+	background-color: #FFF;
+	width: 100%;
+	height: 100%;
+}
+
+div,header {
+	color: #333;
+	text-align: center;
+	font-family: 'Libre Baskerville', serif;
+	text-shadow: 1px 1px 1px #FFF;
+}
+
+#col1 {
+	float: left;
+	text-align: center;
+	margin: 0px auto;
+	background-color: #FFF;
+	color: #333;
+	font-family: 'Libre Baskerville', serif;
+	text-shadow: 1px 1px 1px #FFF;
+	padding-left: 0.5in;
+}
+
+#col2 {
+	float: center;
+	margin: 0px auto;
+	height: 100%;
+}
+
+.clear-both {
+	clear: both;
+}
+
+.mxp {
+	font-family: 'Open Sans', serif;
+	text-transform: uppercase;
+}
+
+#sub-title {
+	overflow: hidden;
+	clear: both;
+}
+
+.clear {
+	clear: both;
+}
+
+.bottom {
+	padding-bottom: 20px;
+}
+
+header {
+	width: 90%;
+	margin: 0px auto;
+	padding: 50px 0 20px 0;
+}
+
+a {
+	text-decoration: none;
+	color: #111;
+}
+
+.botton {
+	padding: 20px;
+	display: block;
+	color: #999;
+}
+
+#button {
+	width: 70%;
+	margin: 0px auto;
+}
+
+#messagelist {
+	text-align: center;
+	margin: 0px auto;
+}
+
+#messagelist li {
+	list-style: none;
+	border-bottom: 1px solid #CCC;
+	padding: 16px 0;
+}
+
+.PercentageBar {
+	background-color: #808080;
+	position: relative;
+	font-size: small;
+	width: 100px;
+	margin: 1px;
+}
+
+.PercentageBar DIV {
+	height: 20px;
+	line-height: 20px;
+}
+
+.PercentageBar .percent {
+	position: absolute;
+	background-color: #800000;
+	left: 0px top: 0px;
+	z-index: 0;
+}
+
+.PercentageBar .caption {
+	position: relative;
+	text-align: center;
+	color: #FFFFFF;
+	z-index: 1;
+}
