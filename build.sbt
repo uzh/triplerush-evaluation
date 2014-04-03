@@ -29,7 +29,7 @@ resolvers +=
 
 /** Dependencies */
 libraryDependencies ++= Seq(
-  "org.scala-lang" % "scala-library" % "2.10.3"  % "compile",
+  "org.scala-lang" % "scala-library" % "2.10.4"  % "compile",
   "com.google.collections" % "google-collections" % "1.0",
   "org.apache.jena" % "apache-jena-libs" % "2.11.1" % "compile",
   "org.openrdf.sesame" % "sesame-runtime" % "2.7.11" % "compile",
