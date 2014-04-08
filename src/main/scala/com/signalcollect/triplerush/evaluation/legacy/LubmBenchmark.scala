@@ -249,7 +249,6 @@
 //      runResult += ((s"revision", revision))
 //      runResult += ((s"queryId", queryId.toString))
 //      runResult += ((s"optimizer", optimizer.toString))
-//      runResult += ((s"queryCopyCount", queryStats("queryCopyCount").toString))
 //      runResult += ((s"query", queryStats("optimizedQuery").toString))
 //      runResult += ((s"exception", queryStats("exception").toString))
 //      runResult += ((s"results", queryResult.length.toString))

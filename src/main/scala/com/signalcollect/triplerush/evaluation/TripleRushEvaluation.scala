@@ -149,7 +149,6 @@ object EvalHelpers {
     val optimizingTime = roundToMillisecondFraction(queryStats("optimizingDuration").asInstanceOf[Long])
     runResult += ((s"queryId", queryDescription))
     runResult += ((s"optimizer", optimizer.toString))
-    runResult += ((s"queryCopyCount", queryStats("queryCopyCount").toString))
     runResult += ((s"query", queryStats("optimizedQuery").toString))
     runResult += ((s"exception", queryStats("exception").toString))
     runResult += ((s"results", queryResult.size.toString))
