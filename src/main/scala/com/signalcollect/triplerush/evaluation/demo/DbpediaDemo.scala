@@ -39,6 +39,7 @@ import scala.collection.parallel.immutable.ParVector
 import com.signalcollect.triplerush.optimizers.NoOptimizerCreator
 import com.signalcollect.triplerush.TriplePattern
 import java.net.URLDecoder
+import com.signalcollect.triplerush.optimizers.ExplorationOptimizerCreator
 
 class DbpediaDemo extends TorqueDeployableAlgorithm {
 
@@ -58,13 +59,15 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
     println(s"Received parameters $parameters")
-    //val ntriples = parameters(ntriplesKey)
+
+    //loading form filtered splits
     val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder, optimizerCreator = NoOptimizerCreator)
+    val tr = new TripleRush(graphBuilder, optimizerCreator = ExplorationOptimizerCreator)
+    //val tr = new TripleRush(graphBuilder, optimizerCreator = NoOptimizerCreator)
 
     println("TripleRush has been started.")
 
-    Dictionary.loadFromFile("dbpedia-binary/dictionary.txt")
+    Dictionary.loadFromFile("dbpedia-binary-old/dictionary.txt")
 
     println("finished loading dictionary.")
 
@@ -74,7 +77,23 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
     }
 
     println("finished loading dbpedia.")
+    
+    /*
+    val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
+    val tr = new TripleRush(graphBuilder = graphBuilder, optimizerCreator = ExplorationOptimizerCreator)
 
+    println("TripleRush has been started.")
+
+    println(s"Loading Dbpedia ...")
+    val loadingTime = measureTime {
+      val dbpediaFolderName = "dbpedia-nt"
+      val ntFile = s"./$dbpediaFolderName/pagelinks_en.nt"
+
+      tr.loadNtriples(ntFile)
+      tr.prepareExecution
+    }
+    println(s"Done loading Dbpedia.")
+	*/
     val optimizerInitStart = System.nanoTime
     val optimizerInitEnd = System.nanoTime
 
@@ -124,7 +143,7 @@ object DbpediaIframeGenerator {
 
   def getEntitiesForEntities(tr: TripleRush, entities: List[String]): List[(String, Double)] = {
     val twoHopsQueries = entities.par.map { DbpediaQueries.twoHopQueryFromEntity(_) }
-    
+
     println("total two hop queries: " + twoHopsQueries.size)
     //println(s"two hop queries: ${twoHopsQueries.mkString(" ")}")
     val queries = twoHopsQueries.flatMap { QuerySpecification.fromSparql(_) }
@@ -132,7 +151,7 @@ object DbpediaIframeGenerator {
     val resultIterators = queries.map { tr.resultIteratorForQuery(_) }
     //println(s"resultIterators: ${resultIterators.mkString(" ")}")
     val (numberOfResults, topKEntities) = transformResults(tr, queries.seq.toList, resultIterators.toList)
-    
+
     println("total entities reached: " + numberOfResults)
     val sortedTopK = topKEntities.toList.sortBy(x => x._2)(Ordering[Double].reverse)
     //println(s"topKEntities: ${topKEntities.mkString(", ")}")
@@ -165,7 +184,7 @@ object DbpediaIframeGenerator {
     //val tenEntities = allEntitiesStr.slice(0, math.min(10, allEntitiesStr.size))
     println("all entities: " + allEntitiesStr)
     println("number of entities on page: " + allEntitiesStr.size)
-    
+
     val entitiesForEntities = getEntitiesForEntities(tr, allEntitiesStr)
 
     println("finished running queries")
@@ -226,7 +245,7 @@ object DbpediaIframeGenerator {
   def transformResults(tr: TripleRush, queries: List[QuerySpecification], is: List[Iterator[Array[Int]]]): (Int, Map[String, Double]) = {
     val targetId = queries.head.variableNameToId.get("T")
     val intermediateId = queries.head.variableNameToId.get("A")
-    
+
     val wikilinkId = Dictionary("http://dbpedia.org/property/wikilink")
     val targetIndex = math.abs(targetId) - 1
     val intermediateIndex = math.abs(intermediateId) - 1
@@ -248,22 +267,22 @@ object DbpediaIframeGenerator {
     //val nodesWithIncomingEdgeCountFuture = tr.executeCountingQuery(QuerySpecification(Array(TriplePattern(-1, wikilinkId, -2))))
     //val totalNodes = Await.result(nodesWithIncomingEdgeCountFuture, 7200.seconds).get // We know it has an incoming edge, because otherwise it would not have been reached.
     //val totalNodes = 59864153
-    
+
     //println(s"got results, totalEdgeCount: $totalEdgeCount, totalNodes: $totalNodes")
-    
+
     println("total counting queries: " + countsMap.size)
-    
+
     val countsDividedByIncomingEdges = countsMap.toScalaMap.par.map {
       case (id, count) =>
         val incomingEdgeCountFuture = tr.executeCountingQuery(QuerySpecification(Array(TriplePattern(-1, wikilinkId, id))))
         //val twoHopsIncomingEdgeCountFuture = tr.executeCountingQuery(QuerySpecification(Array(TriplePattern(-1, wikilinkId, -2), TriplePattern(-2, wikilinkId, id))))
-        
+
         val incomingEdgeCount = Await.result(incomingEdgeCountFuture, 7200.seconds).get // We know it has an incoming edge, because otherwise it would not have been reached.
-        
+
         //val twoHopsIncomingEdgeCount = Await.result(twoHopsIncomingEdgeCountFuture, 7200.seconds).get
-        
-        val incomingEdgesAdjustedCount = count.toDouble / math.pow(incomingEdgeCount, 1.0/3.0)
-        
+
+        val incomingEdgesAdjustedCount = count.toDouble / math.pow(incomingEdgeCount, 1.0 / 3.0)
+
         //println(s"id: ${Dictionary.unsafeDecode(id)}, count: $count, incomingEdgeCount: $incomingEdgeCount, twoHops: $twoHopsIncomingEdgeCount")
         //println(s"id: ${Dictionary.unsafeDecode(id)}, count: $count, incomingEdgeCount: $incomingEdgeCount")
         //val incomingEdgesAdjustedCount = (count.toDouble / totalEdgeCount) * math.log(totalNodes / (incomingEdgeCount + 1))
