@@ -26,7 +26,6 @@ import scala.collection.mutable.PriorityQueue
 import com.signalcollect.GraphBuilder
 import com.signalcollect.deployment.TorqueDeployableAlgorithm
 import com.signalcollect.triplerush.Dictionary
-import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TripleRush
 import com.signalcollect.triplerush.optimizers.NoOptimizerCreator
 import com.signalcollect.util.IntIntHashMap
@@ -39,6 +38,8 @@ import akka.actor.ActorRef
 import com.signalcollect.triplerush.TriplePattern
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
+import com.signalcollect.triplerush.sparql.Sparql
+import com.signalcollect.triplerush.sparql.VariableEncoding
 
 class DbpediaEvaluation extends TorqueDeployableAlgorithm {
 
@@ -117,10 +118,10 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     tr.shutdown
   }
 
-  def transformResults(tr: TripleRush, query: QuerySpecification, i: Iterator[Array[Int]]): (Int, Map[String, Double]) = {
-    val targetId = query.variableNameToId.get("T")
+  def transformResults(tr: TripleRush, query: Sparql, i: Iterator[Array[Int]]): (Int, Map[String, Double]) = {
+    val targetId = query.variableNameToId("T")
     val wikilinkId = Dictionary("http://dbpedia.org/property/wikilink")
-    val targetIndex = math.abs(targetId) - 1
+    val targetIndex = VariableEncoding.variableIdToDecodingIndex(targetId)
     val countsMap = new IntIntHashMap
     var numberOfResults = 0
     while (i.hasNext) {
@@ -129,14 +130,14 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
       val binding = result(targetIndex)
       countsMap.increment(binding)
     }
-//    val countsDividedByIncomingEdges = countsMap.toScalaMap.par.map {
-//      case (id, count) =>
-////        val incomingEdgeCountFuture = tr.executeCountingQuery(QuerySpecification(Array(TriplePattern(-1, wikilinkId, id))))
-////        val incomingEdgeCount = Await.result(incomingEdgeCountFuture, 7200.seconds).get // We know it has an incoming edge, because otherwise it would not have been reached.
-////        val incomingEdgesAdjustedCount = count.toDouble / (incomingEdgeCount.toDouble / numberOfResults)
-////        println(s"${Dictionary(id)}: $incomingEdgeCount incoming edges, $count paths incomingEdgesAdjustedCount=$incomingEdgesAdjustedCount")
-//        (id, incomingEdgesAdjustedCount)
-//    }.seq
+    //    val countsDividedByIncomingEdges = countsMap.toScalaMap.par.map {
+    //      case (id, count) =>
+    ////        val incomingEdgeCountFuture = tr.executeCountingQuery(QuerySpecification(Array(TriplePattern(-1, wikilinkId, id))))
+    ////        val incomingEdgeCount = Await.result(incomingEdgeCountFuture, 7200.seconds).get // We know it has an incoming edge, because otherwise it would not have been reached.
+    ////        val incomingEdgesAdjustedCount = count.toDouble / (incomingEdgeCount.toDouble / numberOfResults)
+    ////        println(s"${Dictionary(id)}: $incomingEdgeCount incoming edges, $count paths incomingEdgesAdjustedCount=$incomingEdgesAdjustedCount")
+    //        (id, incomingEdgesAdjustedCount)
+    //    }.seq
     val topK = 10
     implicit val ordering = Ordering.by((value: (Int, Int)) => value._2)
     val topKQueue = new PriorityQueue[(Int, Int)]()(ordering.reverse)
@@ -175,9 +176,9 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     runResult += ((s"freeMemoryBefore", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
     val startTime = System.nanoTime
-    val queryOption = QuerySpecification.fromSparql(queryString)
+    val queryOption = Sparql(queryString)(tr)
     val query = queryOption.get
-    val resultIterator = tr.resultIteratorForQuery(query)
+    val resultIterator = query.encodedResults
     val (numberOfResults, topKEntities) = transformResults(tr, query, resultIterator)
     val finishTime = System.nanoTime
     println("Number of results: " + numberOfResults)

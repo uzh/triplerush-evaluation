@@ -30,7 +30,6 @@ import com.signalcollect.nodeprovisioning.torque.LocalHost
 import com.signalcollect.nodeprovisioning.torque.TorqueHost
 import com.signalcollect.nodeprovisioning.torque.TorqueJobSubmitter
 import com.signalcollect.nodeprovisioning.torque.TorqueNodeProvisioner
-import com.signalcollect.triplerush.QuerySpecification
 import java.lang.management.ManagementFactory
 import collection.JavaConversions._
 import com.signalcollect.triplerush.TripleRush
@@ -40,6 +39,7 @@ import java.lang.management.GarbageCollectorMXBean
 import com.signalcollect.nodeprovisioning.NodeProvisioner
 import com.signalcollect.triplerush.optimizers.Optimizer
 import scala.Option.option2Iterable
+import com.signalcollect.triplerush.TriplePattern
 
 trait TriplerushEval {
 
@@ -83,7 +83,7 @@ trait TriplerushEval {
     coresPerNode = 23,
     localJarPath = "/home/user/stutz/triplerush-assembly-1.0-SNAPSHOT.jar", jvmParameters = jvmParameters, jdkBinPath = "/home/user/stutz/jdk1.7.0/bin/", priority = torquePriority)
 
-  def runEvaluation(query: QuerySpecification, queryDescription: String, optimizer: Option[Optimizer], tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
+  def runEvaluation(query: Seq[TriplePattern], queryDescription: String, optimizer: Option[Optimizer], tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
     val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion
@@ -196,7 +196,7 @@ object EvalHelpers {
   /**
    * Go to JVM JIT steady state by executing the queries multiple times.
    */
-  def jitSteadyState(queries: List[QuerySpecification], optimizer: Option[Optimizer], tr: TripleRush, repetitions: Int = 100) {
+  def jitSteadyState(queries: List[Seq[TriplePattern]], optimizer: Option[Optimizer], tr: TripleRush, repetitions: Int = 100) {
     for (i <- 1 to repetitions) {
       println(s"running warmup $i/$repetitions")
       for (query <- queries) {

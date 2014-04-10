@@ -32,7 +32,6 @@ import scala.io.Source
 import scala.reflect.runtime.universe
 import com.signalcollect.GraphBuilder
 import com.signalcollect.deployment.TorqueDeployableAlgorithm
-import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TripleRush
 import akka.actor.ActorRef
 import com.signalcollect.triplerush.Dictionary

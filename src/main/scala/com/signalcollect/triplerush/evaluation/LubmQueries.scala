@@ -20,7 +20,6 @@
 
 package com.signalcollect.triplerush.evaluation
 
-import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TriplePattern
 
 object QueryEncoding {
@@ -28,7 +27,7 @@ object QueryEncoding {
 
   def ub = "http://swat.cse.lehigh.edu/onto/univ-bench.owl"
   def rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns"
-//http://www.w3.org/1999/02/22-rdf-syntax-ns#type
+  //http://www.w3.org/1999/02/22-rdf-syntax-ns#type
   def m = Map(
     (s"$rdf#type", 1),
     (s"$ub#GraduateStudent", 2),
@@ -50,30 +49,30 @@ object QueryEncoding {
     (s"$ub#teacherOf", 18),
     (s"$ub#advisor", 19),
     (s"$ub#takesCourse", 20))
-//    (s"http://www.w3.org/2004/02/skos/core#subject", 21),
-//    (s"http://dbpedia.org/resource/Category:First-person_shooters", 22),
-//       (s"$foaf:name", 23),
-//    (s"$foaf:homepage", 24),
-//    (s"rdf#type", 25),
-//    (s"http://dbpedia.org/resource/Category:German_musicians", 26),
-//    (s"$rdfs#comment", 27),
-//    (s"$dbo:birthPlace", 28),
-//    (s"http://dbpedia.org/resource/Berlin", 29),
-//    (s"$dbo:birthDate", 30),
-//    (s"$dbo:deathDate", 31),
-//    (s"http://dbpedia.org/resource/Category:Luxury_vehicles", 32),
-//    (s"$dbo:manufacturer", 33),
-//    (s"$dbprop:name", 34),
-//    (s"$dbprop:pages", 35),
-//    (s"$dbprop:isbn", 36),
-//    (s"$dbprop:author", 37),
-//    (s"$foaf:page", 38),
-//    (s"$dbo:SoccerPlayer", 39),
-//    (s"$dbprop:position", 40),
-//    (s"$dbprop:clubs", 41),
-//    (s"$dbo:capacity", 42),
-//    (s"$dbprop:population", 43),
-//    (s"$dbo:number", 44)
+  //    (s"http://www.w3.org/2004/02/skos/core#subject", 21),
+  //    (s"http://dbpedia.org/resource/Category:First-person_shooters", 22),
+  //       (s"$foaf:name", 23),
+  //    (s"$foaf:homepage", 24),
+  //    (s"rdf#type", 25),
+  //    (s"http://dbpedia.org/resource/Category:German_musicians", 26),
+  //    (s"$rdfs#comment", 27),
+  //    (s"$dbo:birthPlace", 28),
+  //    (s"http://dbpedia.org/resource/Berlin", 29),
+  //    (s"$dbo:birthDate", 30),
+  //    (s"$dbo:deathDate", 31),
+  //    (s"http://dbpedia.org/resource/Category:Luxury_vehicles", 32),
+  //    (s"$dbo:manufacturer", 33),
+  //    (s"$dbprop:name", 34),
+  //    (s"$dbprop:pages", 35),
+  //    (s"$dbprop:isbn", 36),
+  //    (s"$dbprop:author", 37),
+  //    (s"$foaf:page", 38),
+  //    (s"$dbo:SoccerPlayer", 39),
+  //    (s"$dbprop:position", 40),
+  //    (s"$dbprop:clubs", 41),
+  //    (s"$dbo:capacity", 42),
+  //    (s"$dbprop:population", 43),
+  //    (s"$dbo:number", 44)
 }
 
 object LubmQueries {
@@ -92,52 +91,52 @@ object LubmQueries {
   val z = -3
 
   import QueryEncoding._
-  
-  def fullQueries: List[QuerySpecification] = List(
-    QuerySpecification(List(
+
+  def fullQueries: List[Seq[TriplePattern]] = List(
+    Seq(
       TriplePattern(x, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#GraduateStudent")), // ?X rdf:type ub:GraduateStudent
       TriplePattern(x, QueryEncoding(s"$ub#undergraduateDegreeFrom"), y), // ?X ub:undergraduateDegreeFrom ?Y
       TriplePattern(x, QueryEncoding(s"$ub#memberOf"), z), // ?X ub:memberOf ?Z
       TriplePattern(z, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#Department")), // ?Z rdf:type ub:Department
       TriplePattern(z, QueryEncoding(s"$ub#subOrganizationOf"), y), // ?Z ub:subOrganizationOf ?Y
       TriplePattern(y, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#University")) // ?Y rdf:type ub:University
-      )),
-    QuerySpecification(List(
+      ),
+    Seq(
       TriplePattern(x, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#Course")), // ?X rdf:type ub:Course
       TriplePattern(x, QueryEncoding(s"$ub#name"), y) // ?X ub:name ?Y),
-      )),
-    QuerySpecification(List(
+      ),
+    Seq(
       TriplePattern(x, QueryEncoding(s"$ub#undergraduateDegreeFrom"), y), // ?X ub:undergraduateDegreeFrom ?Y
       TriplePattern(x, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#UndergraduateStudent")), // ?X rdf:type ub:UndergraduateStudent
       TriplePattern(x, QueryEncoding(s"$ub#memberOf"), z), // ?X ub:memberOf ?Z
       TriplePattern(z, QueryEncoding(s"$ub#subOrganizationOf"), y), // ?Z ub:subOrganizationOf ?Y
       TriplePattern(z, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#Department")), // ?Z rdf:type ub:Department
       TriplePattern(y, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#University")) // ?Y rdf:type ub:University
-      )),
-    QuerySpecification(List(
+      ),
+    Seq(
       TriplePattern(x, QueryEncoding(s"$ub#worksFor"), QueryEncoding("http://www.Department0.University0.edu")), // ?X ub:worksFor http://www.Department0.University0.edu
       TriplePattern(x, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#FullProfessor")), // ?X rdf:type ub:FullProfessor
       TriplePattern(x, QueryEncoding(s"$ub#name"), y), // ?X ub:name ?Y1
       TriplePattern(x, QueryEncoding(s"$ub#emailAddress"), z), // ?X ub:emailAddress ?Y2
       TriplePattern(x, QueryEncoding(s"$ub#telephone"), -4) // ?X ub:telephone ?Y3
-      )),
-    QuerySpecification(List(
+      ),
+    Seq(
       TriplePattern(x, QueryEncoding(s"$ub#subOrganizationOf"), QueryEncoding("http://www.Department0.University0.edu")), // ?X ub:subOrganizationOf http://www.Department0.University0.edu
       TriplePattern(x, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#ResearchGroup")) // ?X rdf:type ub:ResearchGroup
-      )),
-    QuerySpecification(List(
+      ),
+    Seq(
       TriplePattern(y, QueryEncoding(s"$ub#subOrganizationOf"), QueryEncoding("http://www.University0.edu")), // ?Y ub:subOrganizationOf http://www.University0.edu
       TriplePattern(y, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#Department")), //?Y rdf:type ub:Department
       TriplePattern(x, QueryEncoding(s"$ub#worksFor"), y), // ?X ub:worksFor ?Y
       TriplePattern(x, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#FullProfessor")) // ?X rdf:type ub:FullProfessor
-      )),
-    QuerySpecification(List(
+      ),
+    Seq(
       TriplePattern(y, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#FullProfessor")), // ?Y rdf:type ub:FullProfessor
       TriplePattern(y, QueryEncoding(s"$ub#teacherOf"), z), // ?Y ub:teacherOf ?Z
       TriplePattern(z, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#Course")), // ?Z rdf:type ub:Course
       TriplePattern(x, QueryEncoding(s"$ub#advisor"), y), // ?X ub:advisor ?Y
       TriplePattern(x, QueryEncoding(s"$ub#takesCourse"), z), // ?X ub:takesCourse ?Z
       TriplePattern(x, QueryEncoding(s"$rdf#type"), QueryEncoding(s"$ub#UndergraduateStudent")) // ?X rdf:type ub:UndergraduateStudent
-      )))
+      ))
 
 }

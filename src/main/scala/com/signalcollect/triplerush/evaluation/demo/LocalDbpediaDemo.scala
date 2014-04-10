@@ -2,7 +2,6 @@ package com.signalcollect.triplerush.evaluation.demo
 
 import com.signalcollect.triplerush.TripleRush
 import com.signalcollect.triplerush.optimizers.NoOptimizerCreator
-import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TriplePattern
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
