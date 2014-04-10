@@ -40,6 +40,7 @@ import com.signalcollect.triplerush.TriplePattern
 import java.net.URLDecoder
 import com.signalcollect.triplerush.sparql.Sparql
 import com.signalcollect.triplerush.sparql.VariableEncoding
+import com.signalcollect.triplerush.optimizers.ExplorationOptimizerCreator
 
 class DbpediaDemo extends TorqueDeployableAlgorithm {
 
@@ -59,13 +60,15 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
     println(s"Received parameters $parameters")
-    //val ntriples = parameters(ntriplesKey)
+
+    //loading form filtered splits
     val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder, optimizerCreator = NoOptimizerCreator)
+    val tr = new TripleRush(graphBuilder, optimizerCreator = ExplorationOptimizerCreator)
+    //val tr = new TripleRush(graphBuilder, optimizerCreator = NoOptimizerCreator)
 
     println("TripleRush has been started.")
 
-    Dictionary.loadFromFile("dbpedia-binary/dictionary.txt")
+    Dictionary.loadFromFile("dbpedia-binary-old/dictionary.txt")
 
     println("finished loading dictionary.")
 
@@ -76,6 +79,22 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
 
     println("finished loading dbpedia.")
 
+    /*
+    val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
+    val tr = new TripleRush(graphBuilder = graphBuilder, optimizerCreator = ExplorationOptimizerCreator)
+
+    println("TripleRush has been started.")
+
+    println(s"Loading Dbpedia ...")
+    val loadingTime = measureTime {
+      val dbpediaFolderName = "dbpedia-nt"
+      val ntFile = s"./$dbpediaFolderName/pagelinks_en.nt"
+
+      tr.loadNtriples(ntFile)
+      tr.prepareExecution
+    }
+    println(s"Done loading Dbpedia.")
+	*/
     val optimizerInitStart = System.nanoTime
     val optimizerInitEnd = System.nanoTime
 
@@ -133,7 +152,6 @@ object DbpediaIframeGenerator {
     val resultIterators = queries.map { _.encodedResults }
     //println(s"resultIterators: ${resultIterators.mkString(" ")}")
     val (numberOfResults, topKEntities) = transformResults(tr, queries.seq.toList, resultIterators.seq.toList)
-
     println("total entities reached: " + numberOfResults)
     val sortedTopK = topKEntities.toList.sortBy(x => x._2)(Ordering[Double].reverse)
     //println(s"topKEntities: ${topKEntities.mkString(", ")}")
@@ -227,7 +245,6 @@ object DbpediaIframeGenerator {
   def transformResults(tr: TripleRush, queries: List[Sparql], is: List[Iterator[Array[Int]]]): (Int, Map[String, Double]) = {
     val targetId = queries.head.variableNameToId("T")
     val intermediateId = queries.head.variableNameToId("A")
-
     val wikilinkId = Dictionary("http://dbpedia.org/property/wikilink")
     val targetIndex = VariableEncoding.variableIdToDecodingIndex(targetId)
     val intermediateIndex = VariableEncoding.variableIdToDecodingIndex(intermediateId)
