@@ -19,7 +19,6 @@
 
 package com.signalcollect.triplerush.evaluation
 
-import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TriplePattern
 import scala.collection.mutable.PriorityQueue
 

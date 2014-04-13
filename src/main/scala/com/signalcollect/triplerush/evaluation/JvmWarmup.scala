@@ -22,8 +22,8 @@ package com.signalcollect.triplerush.evaluation
 import java.lang.management.ManagementFactory
 import scala.util.Random
 import collection.JavaConversions._
-import com.signalcollect.triplerush.QuerySpecification
 import com.signalcollect.triplerush.TripleRush
+import com.signalcollect.triplerush.sparql.Sparql
 
 object JvmWarmup extends App {
   warmup(30, 20)
@@ -66,9 +66,10 @@ WHERE {
         		?B <http://warmup.com/0> ?T
 }
 """
-      val queryOption = QuerySpecification.fromSparql(sparql)
+      val queryOption = Sparql(sparql)(tr)
       if (queryOption.isDefined) {
-        val results = tr.executeQuery(queryOption.get)
+        val query = queryOption.get
+        val results = query.resultIterator
         val numberOfResults = results.size
         val compilationTimeAfter = compilations.getTotalCompilationTime
         val compilationDelta = compilationTimeAfter - compilationTimeBefore
@@ -92,8 +93,8 @@ WHERE {
     } finally {
       tr.shutdown
     }
-  } 
-  
+  }
+
   def sleepUntilGcInactiveForXSeconds(x: Int) {
     val gcs = ManagementFactory.getGarbageCollectorMXBeans
     val sunGcs = gcs.map(_.asInstanceOf[com.sun.management.GarbageCollectorMXBean])
