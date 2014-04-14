@@ -36,6 +36,5 @@ object LocalTrTestRun extends App {
     serializeMessages = false,
     loggingLevel = Logging.WarningLevel, //Logging.DebugLevel,
     kryoRegistrations = kryoRegistrations,
-    useJavaSerialization = false,
     port = akkaPort)
 }
