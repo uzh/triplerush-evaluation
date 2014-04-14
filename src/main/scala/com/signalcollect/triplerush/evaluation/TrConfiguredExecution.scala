@@ -21,6 +21,6 @@ package com.signalcollect.triplerush.evaluation
 
 import com.signalcollect.deployment.TorqueExecution
 
-object ConfiguredExecution extends App {
+object TrConfiguredExecution extends App {
   TorqueExecution.deployToTorque(args)
 }
