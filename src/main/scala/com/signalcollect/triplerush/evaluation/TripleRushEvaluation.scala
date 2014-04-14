@@ -97,6 +97,7 @@ class TripleRushEvaluation extends TorqueDeployableAlgorithm {
       }
     }
     println(s"Finished warm-up.")
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
     for (queryId <- 1 to queries.size) {
@@ -106,6 +107,7 @@ class TripleRushEvaluation extends TorqueDeployableAlgorithm {
       println(s"Done running evaluation for query $queryId. Awaiting idle")
       tr.awaitIdle
       println("Idle")
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
     }
     tr.shutdown
   }
