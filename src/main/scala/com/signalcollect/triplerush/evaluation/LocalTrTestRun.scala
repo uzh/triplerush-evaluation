@@ -9,6 +9,7 @@ import com.signalcollect.configuration.ActorSystemRegistry
 import com.signalcollect.nodeprovisioning.NodeActorCreator
 import akka.actor.Props
 import com.signalcollect.nodeprovisioning.DefaultNodeActor
+import com.signalcollect.configuration.GraphConfiguration
 
 object LocalTrTestRun extends App {
   val j = new DbpediaEvaluation
@@ -36,5 +37,6 @@ object LocalTrTestRun extends App {
     serializeMessages = false,
     loggingLevel = Logging.WarningLevel, //Logging.DebugLevel,
     kryoRegistrations = kryoRegistrations,
+    kryoInitializer = GraphConfiguration().kryoInitializer,
     port = akkaPort)
 }
