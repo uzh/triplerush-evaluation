@@ -6,7 +6,6 @@ import akka.actor.ActorSystem
 import com.signalcollect.configuration.AkkaConfig
 import akka.event.Logging
 import com.signalcollect.configuration.ActorSystemRegistry
-import com.signalcollect.nodeprovisioning.NodeActorCreator
 import akka.actor.Props
 import com.signalcollect.nodeprovisioning.DefaultNodeActor
 import com.signalcollect.configuration.GraphConfiguration
@@ -23,9 +22,7 @@ object LocalTrTestRun extends App {
   }
   val system: ActorSystem = ActorSystem("SignalCollect", akkaConfig(2552, kryoRegistrations))
   ActorSystemRegistry.register(system)
-  val nodeControllerCreator = NodeActorCreator(0, 1, None)
-  val nodeController = system.actorOf(Props[DefaultNodeActor].withCreator(
-    nodeControllerCreator.create), name = "DefaultNodeActor" + 0.toString)
+  val nodeController = system.actorOf(Props(classOf[DefaultNodeActor], 0, 1, None), name = "DefaultNodeActor" + 0.toString)
   val parameterMap = config.getConfig("deployment.algorithm.parameters").entrySet.map {
     entry => (entry.getKey, entry.getValue.unwrapped.toString)
   }.toMap
@@ -33,7 +30,6 @@ object LocalTrTestRun extends App {
   j.execute(parameterMap, nodeActor)
 
   def akkaConfig(akkaPort: Int, kryoRegistrations: List[String]) = AkkaConfig.get(
-    akkaMessageCompression = true,
     serializeMessages = false,
     loggingLevel = Logging.WarningLevel, //Logging.DebugLevel,
     kryoRegistrations = kryoRegistrations,
