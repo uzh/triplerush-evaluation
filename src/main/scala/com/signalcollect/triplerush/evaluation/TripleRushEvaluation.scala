@@ -36,6 +36,7 @@ import com.signalcollect.triplerush.TripleRush
 import com.signalcollect.triplerush.optimizers.Optimizer
 import akka.actor.ActorRef
 import com.signalcollect.triplerush.TriplePattern
+import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
 
 class TripleRushEvaluation extends TorqueDeployableAlgorithm {
 
@@ -50,6 +51,8 @@ class TripleRushEvaluation extends TorqueDeployableAlgorithm {
   val spreadsheetPasswordKey = "spreadsheetPassword"
   val spreadsheetNameKey = "spreadsheetName"
   val worksheetNameKey = "worksheetName"
+  val dataSourceKey = "dataSource"
+  val rdfTypePartitioningKey = "rdfType"
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
     println(s"Received parameters $parameters")
@@ -63,6 +66,8 @@ class TripleRushEvaluation extends TorqueDeployableAlgorithm {
     val spreadsheetPassword = parameters(spreadsheetPasswordKey)
     val spreadsheetName = parameters(spreadsheetNameKey)
     val worksheetName = parameters(worksheetNameKey)
+    val dataSource = parameters(dataSourceKey)
+    val rdfTypePartitioning = parameters(rdfTypePartitioningKey).toBoolean
     val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder)
     println("TripleRush has been started.")
@@ -72,14 +77,22 @@ class TripleRushEvaluation extends TorqueDeployableAlgorithm {
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
     val loadingTime = measureTime {
-      loadLubm(universities.get.toInt, tr)
+      if (dataSource == "ntriples") {
+        loadLubmFromNTriples(universities.get.toInt, tr)
+      } else {
+        loadLubm(universities.get.toInt, tr, rdfTypePartitioning)
+      }
       tr.prepareExecution
     }
 
     val optimizerInitStart = System.nanoTime
     val optimizer = optimizerCreator(tr)
     val optimizerInitEnd = System.nanoTime
-    val queries = LubmQueries.fullQueries
+    val queries = if (rdfTypePartitioning){
+        LubmQueriesRdfType.fullQueries
+      } else {
+        LubmQueries.fullQueries
+      } 
 
     commonResults += ((s"optimizerInitialisationTime", roundToMillisecondFraction(optimizerInitEnd - optimizerInitStart).toString))
     commonResults += ((s"optimizerName", optimizer.toString))
@@ -102,6 +115,7 @@ class TripleRushEvaluation extends TorqueDeployableAlgorithm {
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
     for (queryId <- 1 to queries.size) {
       println(s"Running evaluation for query $queryId.")
+      println(s"query: ${queries(queryId - 1)}.")
       val result = executeEvaluationRun(queries(queryId - 1), queryId.toString, optimizer, tr, commonResults)
       resultReporter(result)
       println(s"Done running evaluation for query $queryId. Awaiting idle")
@@ -167,9 +181,16 @@ object EvalHelpers {
     runResult
   }
 
-  def loadLubm(universities: Int, triplerush: TripleRush) {
+  def loadLubm(universities: Int, triplerush: TripleRush, rdfTypePartitioning: Boolean) {
     println(s"Loading LUBM $universities ...")
-    val lubmFolderName = s"lubm$universities-filtered-splits"
+    val lubmFolderName =
+      if (rdfTypePartitioning){
+        println(s"rdfTypePartitioning is true, directory is: lubm$universities-type-filtered-splits")
+        s"lubm$universities-type-filtered-splits"
+      } else {
+        println(s"rdfTypePartitioning is true, directory is: lubm$universities-filtered-splits")
+        s"lubm$universities-filtered-splits"
+      }
     for (splitId <- 0 until 2880) {
       val splitFile = s"./$lubmFolderName/$splitId.filtered-split"
       triplerush.loadBinary(splitFile, Some(splitId))
@@ -178,6 +199,21 @@ object EvalHelpers {
         triplerush.awaitIdle
         println(s"Continuing graph loading...")
       }
+    }
+  }
+
+  def loadLubmFromNTriples(universities: Int, triplerush: TripleRush) {
+    println(s"Loading LUBM $universities ... from NTriples")
+    val lubmFolderName = s"lubm$universities-nt"
+
+    val sourceFiles = filesIn(lubmFolderName).
+      filter(_.getName.endsWith(".nt")).
+      sorted
+
+    for (src <- sourceFiles) {
+      println(s"src: $src")
+      val ntFile = s"$src"
+      triplerush.loadNtriples(ntFile)
     }
   }
 
