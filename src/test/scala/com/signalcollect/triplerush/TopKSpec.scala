@@ -24,7 +24,7 @@ import org.scalatest.FlatSpec
 import com.signalcollect.triplerush.evaluation.DbpediaQueries
 import org.scalatest.Matchers
 
-class TopKSpec extends FlatSpec with Matchers with TestAnnouncements {
+class TopKSpec extends FlatSpec with Matchers {
 
   "topKCounts" should "return the topK items by value from an (Int, Int) map" in {
     val testMap = Map(1 -> 2, 2 -> 1, 3 -> 10)
