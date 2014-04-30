@@ -68,7 +68,7 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
 
     println("TripleRush has been started.")
 
-    Dictionary.loadFromFile("dbpedia-binary-old/dictionary.txt")
+    tr.dictionary.loadFromFile("dbpedia-binary-old/dictionary.txt")
 
     println("finished loading dictionary.")
 
@@ -245,7 +245,7 @@ object DbpediaIframeGenerator {
   def transformResults(tr: TripleRush, queries: List[Sparql], is: List[Iterator[Array[Int]]]): (Int, Map[String, Double]) = {
     val targetId = queries.head.variableNameToId("T")
     val intermediateId = queries.head.variableNameToId("A")
-    val wikilinkId = Dictionary("http://dbpedia.org/property/wikilink")
+    val wikilinkId = tr.dictionary("http://dbpedia.org/property/wikilink")
     val targetIndex = VariableEncoding.variableIdToDecodingIndex(targetId)
     val intermediateIndex = VariableEncoding.variableIdToDecodingIndex(intermediateId)
     val countsMap = new IntIntHashMap
@@ -307,7 +307,7 @@ object DbpediaIframeGenerator {
     println("got topK")
     val topKCountsMap = topKQueue.toMap
     val topKResults = DbpediaQueries.normalize(topKCountsMap)
-    val topKEntities = topKResults.map(entry => (Dictionary.unsafeDecode(entry._1), entry._2))
+    val topKEntities = topKResults.map(entry => (tr.dictionary.unsafeDecode(entry._1), entry._2))
     (numberOfResults, topKEntities)
   }
 
