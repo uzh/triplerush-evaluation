@@ -20,7 +20,6 @@ import com.signalcollect.triplerush.TriplePattern
 import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
 import com.signalcollect.deployment.SlurmDeployableAlgorithm
 
-
 class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
   import SlurmEvalHelpers._
 
@@ -67,6 +66,8 @@ class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
       tr.prepareExecution
     }
 
+    println(s"loading time: $loadingTime")
+
     val optimizerInitStart = System.nanoTime
     val optimizer = optimizerCreator(tr)
     val optimizerInitEnd = System.nanoTime
@@ -95,7 +96,10 @@ class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
-    for (queryId <- 1 to queries.size) {
+    for (queryId <- queries.size to 1 by -1) {
+      //for (queryId <- 1 to queries.size) {
+      val startTime = System.currentTimeMillis
+
       println(s"Running evaluation for query $queryId.")
       println(s"query: ${queries(queryId - 1)}.")
       val result = executeEvaluationRun(queries(queryId - 1), queryId.toString, optimizer, tr, commonResults)
@@ -103,6 +107,10 @@ class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
       println(s"Done running evaluation for query $queryId. Awaiting idle")
       tr.awaitIdle
       println("Idle")
+
+      val finishTime = System.currentTimeMillis
+      println(s"query $queryId took ${finishTime - startTime}") 
+
       JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
     }
     tr.shutdown
