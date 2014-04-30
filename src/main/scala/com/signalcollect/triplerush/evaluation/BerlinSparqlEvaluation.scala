@@ -51,17 +51,13 @@ class BerlinSparqlEvaluation extends SlurmDeployableAlgorithm {
     val queriesObjectName = s"com.signalcollect.triplerush.evaluation.BerlinSparqlParameterized$datasetSize"
     val ntriplesFileLocation = s"berlinsparql_$datasetSize-nt/dataset_$datasetSize.nt"
 
-    //println(s"Dictionary has ${Dictionary.totalEntries} entries")
-    
     val loadingTime = measureTime {
-      tr.loadNtriples(ntriplesFileLocation)
+      tr.loadNtriples(ntriplesFileLocation, Some (0))
       tr.prepareExecution
     }
 
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
 
-    //println(s"Dictionary has ${Dictionary.totalEntries} entries")
-    
     val optimizerInitStart = System.nanoTime
     val optimizer = optimizerCreator(tr)
     val optimizerInitEnd = System.nanoTime
@@ -109,7 +105,6 @@ class BerlinSparqlEvaluation extends SlurmDeployableAlgorithm {
 
     println(s"Finished warm-up.")
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
-    //println(s"Dictionary has ${Dictionary.totalEntries} entries")
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
 
     for ((queryId, listOfSubQueryIds) <- queriesObject.queriesWithResults) {
@@ -151,7 +146,6 @@ class BerlinSparqlEvaluation extends SlurmDeployableAlgorithm {
   }
 
   def executeEvaluationRun(queryString: String, queryRun: Int, queryDescription: String, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
-    //println(s"Dictionary has ${Dictionary.totalEntries} entries")
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
     val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion

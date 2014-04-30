@@ -19,6 +19,7 @@ import akka.actor.ActorRef
 import com.signalcollect.triplerush.TriplePattern
 import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
 import com.signalcollect.triplerush.sparql.Sparql
+import java.net.InetAddress
 
 class BerlinSparqlEvaluationTorque extends TorqueDeployableAlgorithm {
   import EvalHelpers._
@@ -50,7 +51,7 @@ class BerlinSparqlEvaluationTorque extends TorqueDeployableAlgorithm {
     val ntriplesFileLocation = s"berlinsparql_$datasetSize-nt/dataset_$datasetSize.nt"
 
     val loadingTime = measureTime {
-      tr.loadNtriples(ntriplesFileLocation)
+      tr.loadNtriples(ntriplesFileLocation, Some (0))
       tr.prepareExecution
     }
 
@@ -141,6 +142,8 @@ class BerlinSparqlEvaluationTorque extends TorqueDeployableAlgorithm {
   }
 
   def executeEvaluationRun(queryString: String, queryRun: Int, queryDescription: String, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
+    val hostname = InetAddress.getLocalHost().getHostName()
+    println(s"evaluate: myhostname: $hostname")
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
     val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion
