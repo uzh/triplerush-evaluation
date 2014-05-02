@@ -57,17 +57,26 @@ class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
     commonResults += "numberOfWorkers" -> tr.graph.numberOfWorkers.toString
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
+    if(universities.get.toInt <= 640) {
+    	tr.dictionary.loadFromFile(s"lubm$universities-type-binary/dictionary.txt")
+    }
+    
     val loadingTime = measureTime {
-      /*if (dataSource == "ntriples") {
+      if (dataSource == "ntriples") {
         loadLubmFromNTriples(universities.get.toInt, tr)
-      } else {*/
+      } else {
         loadLubm(universities.get.toInt, tr, rdfTypePartitioning)
-      //}
-      tr.prepareExecution
+      }
     }
 
     println(s"loading time: $loadingTime")
 
+    val prepareExecutionTime = measureTime {
+      tr.prepareExecution
+    }
+
+    println(s"prepare execution time: $prepareExecutionTime")
+    
     val optimizerInitStart = System.nanoTime
     val optimizer = optimizerCreator(tr)
     val optimizerInitEnd = System.nanoTime
