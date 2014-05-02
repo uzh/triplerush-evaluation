@@ -58,11 +58,11 @@ class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
     val loadingTime = measureTime {
-      if (dataSource == "ntriples") {
+      /*if (dataSource == "ntriples") {
         loadLubmFromNTriples(universities.get.toInt, tr)
-      } else {
+      } else {*/
         loadLubm(universities.get.toInt, tr, rdfTypePartitioning)
-      }
+      //}
       tr.prepareExecution
     }
 
@@ -109,7 +109,7 @@ class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
       println("Idle")
 
       val finishTime = System.currentTimeMillis
-      println(s"query $queryId took ${finishTime - startTime}") 
+      println(s"query $queryId took ${finishTime - startTime}")
 
       JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
     }
