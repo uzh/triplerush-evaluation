@@ -21,6 +21,7 @@ import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
 import com.signalcollect.triplerush.sparql.Sparql
 import com.signalcollect.deployment.SlurmDeployableAlgorithm
 import com.signalcollect.triplerush.Dictionary
+import org.specs2.execute.ResultImplicits
 
 class BerlinSparqlEvaluation extends SlurmDeployableAlgorithm {
   import SlurmEvalHelpers._
@@ -52,7 +53,7 @@ class BerlinSparqlEvaluation extends SlurmDeployableAlgorithm {
     val ntriplesFileLocation = s"berlinsparql_$datasetSize-nt/dataset_$datasetSize.nt"
 
     val loadingTime = measureTime {
-      tr.loadNtriples(ntriplesFileLocation, Some (0))
+      tr.loadNtriples(ntriplesFileLocation, Some(0))
       tr.prepareExecution
     }
 
@@ -166,7 +167,15 @@ class BerlinSparqlEvaluation extends SlurmDeployableAlgorithm {
     val queryOption = Sparql(queryString)(tr)
     val query = queryOption.get
     val resultIterator = query.encodedResults
-    val numberOfResults = resultIterator.toList.size
+    //val numberOfResults = resultIterator.toList.size
+    var numberOfResults = 0
+    while (resultIterator.hasNext) {
+      numberOfResults += 1
+      val next = resultIterator.next
+      for (binding <- next) {
+        tr.dictionary.decode(binding)
+      }
+    }
     //val (numberOfResults, topKEntities) = transformResults(tr, query, resultIterator)
     val finishTime = System.nanoTime
     //println("Number of results: " + numberOfResults)
