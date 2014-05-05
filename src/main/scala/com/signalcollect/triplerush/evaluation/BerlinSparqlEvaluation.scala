@@ -21,7 +21,6 @@ import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
 import com.signalcollect.triplerush.sparql.Sparql
 import com.signalcollect.deployment.SlurmDeployableAlgorithm
 import com.signalcollect.triplerush.Dictionary
-import org.specs2.execute.ResultImplicits
 
 class BerlinSparqlEvaluation extends SlurmDeployableAlgorithm {
   import SlurmEvalHelpers._
@@ -168,7 +167,9 @@ class BerlinSparqlEvaluation extends SlurmDeployableAlgorithm {
     val query = queryOption.get
     val resultIterator = query.encodedResults
     //val numberOfResults = resultIterator.toList.size
+    
     var numberOfResults = 0
+
     while (resultIterator.hasNext) {
       numberOfResults += 1
       val next = resultIterator.next
