@@ -18,21 +18,19 @@ import com.signalcollect.triplerush.optimizers.Optimizer
 import akka.actor.ActorRef
 import com.signalcollect.triplerush.TriplePattern
 import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
-import com.signalcollect.deployment.SlurmDeployableAlgorithm
 
-class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
+class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
   import SlurmEvalHelpers._
 
   val evaluationDescriptionKey = "evaluationDescription"
   val warmupRunsKey = "jitRepetitions"
   val datasetKey = "dataset"
   val universitiesKey = "universities"
-  val optimizerCreatorKey = "optimizerCreator"
+  //val optimizerCreatorKey = "optimizerCreator"
   val spreadsheetUsernameKey = "spreadsheetUsername"
   val spreadsheetPasswordKey = "spreadsheetPassword"
   val spreadsheetNameKey = "spreadsheetName"
   val worksheetNameKey = "worksheetName"
-  val dataSourceKey = "dataSource"
   val rdfTypePartitioningKey = "rdfType"
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
@@ -41,13 +39,12 @@ class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
     val warmupRuns = parameters(warmupRunsKey).toInt
     val dataset = parameters(datasetKey)
     val universities: Option[String] = parameters.get(universitiesKey)
-    val optimizerCreatorName = parameters(optimizerCreatorKey)
-    val optimizerCreator = getObject[Function1[TripleRush, Option[Optimizer]]](optimizerCreatorName)
+   //val optimizerCreatorName = parameters(optimizerCreatorKey)
+    //val optimizerCreator = getObject[Function1[TripleRush, Option[Optimizer]]](optimizerCreatorName)
     val spreadsheetUsername = parameters(spreadsheetUsernameKey)
     val spreadsheetPassword = parameters(spreadsheetPasswordKey)
     val spreadsheetName = parameters(spreadsheetNameKey)
     val worksheetName = parameters(worksheetNameKey)
-    val dataSource = parameters(dataSourceKey)
     val rdfTypePartitioning = parameters(rdfTypePartitioningKey).toBoolean
     val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder)
@@ -57,28 +54,23 @@ class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
     commonResults += "numberOfWorkers" -> tr.graph.numberOfWorkers.toString
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
-    if(universities.get.toInt <= 640) {
-    	tr.dictionary.loadFromFile(s"lubm$universities-type-binary/dictionary.txt")
-    }
-    
     val loadingTime = measureTime {
-      if (dataSource == "ntriples") {
-        loadLubmFromNTriples(universities.get.toInt, tr)
-      } else {
-        loadLubm(universities.get.toInt, tr, rdfTypePartitioning)
-      }
+      loadLubm(universities.get.toInt, tr, rdfTypePartitioning)
+      tr.awaitIdle
     }
 
-    println(s"loading time: $loadingTime")
+    println(s"Finished loading")
 
-    val prepareExecutionTime = measureTime {
+    val optimizerInitialisationTime = measureTime {
       tr.prepareExecution
     }
 
-    println(s"prepare execution time: $prepareExecutionTime")
-    
+    println(s"Finished optimizer initialization")
+
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
+
     val optimizerInitStart = System.nanoTime
-    val optimizer = optimizerCreator(tr)
+    //val optimizer = optimizerCreator(tr)
     val optimizerInitEnd = System.nanoTime
     val queries = if (rdfTypePartitioning) {
       LubmQueriesRdfType.fullQueries
@@ -86,41 +78,43 @@ class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
       LubmQueries.fullQueries
     }
 
-    commonResults += ((s"optimizerInitialisationTime", roundToMillisecondFraction(optimizerInitEnd - optimizerInitStart).toString))
-    commonResults += ((s"optimizerName", optimizer.toString))
+    commonResults += ((s"optimizerInitialisationTime", optimizerInitialisationTime.toString))
+    commonResults += ((s"optimizerName", "ExplorationOptimizer"))
     commonResults += (("loadingTime", loadingTime.toString))
     commonResults += s"loadNumber" -> universities.toString
     commonResults += s"dataSet" -> s"lubm$universities"
 
     println("Starting warm-up...")
 
-    for (i <- 1 to warmupRuns) {
-      println(s"Running warmup $i/$warmupRuns")
-      for (query <- queries) {
-        tr.executeAdvancedQuery(query, optimizer)
-        tr.awaitIdle
+    def warmup {
+      for (i <- 1 to warmupRuns) {
+        println(s"Running warmup $i/$warmupRuns")
+        for (query <- queries) {
+          executeEvaluationRun(query, "warmup", 0, tr, commonResults)
+          tr.awaitIdle
+        }
       }
+      println(s"Finished warm-up.")
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
     }
-    println(s"Finished warm-up.")
-    JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
+    
+    val warmupTime = measureTime(warmup)
+    commonResults += s"warmupTime" -> warmupTime.toString
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
     for (queryId <- queries.size to 1 by -1) {
-      //for (queryId <- 1 to queries.size) {
-      val startTime = System.currentTimeMillis
+      val query = queries(queryId - 1)
+      for (queryRun <- 1 to 10) {
+        println(s"Running evaluation for query $queryId.")
+        println(s"query: ${queries(queryId - 1)}.")
+        val result = executeEvaluationRun(query, queryId.toString, queryRun, tr, commonResults)
+        resultReporter(result)
+        println(s"Done running evaluation for query $queryId. Awaiting idle")
+        tr.awaitIdle
+        println("Idle")
 
-      println(s"Running evaluation for query $queryId.")
-      println(s"query: ${queries(queryId - 1)}.")
-      val result = executeEvaluationRun(queries(queryId - 1), queryId.toString, optimizer, tr, commonResults)
-      resultReporter(result)
-      println(s"Done running evaluation for query $queryId. Awaiting idle")
-      tr.awaitIdle
-      println("Idle")
-
-      val finishTime = System.currentTimeMillis
-      println(s"query $queryId took ${finishTime - startTime}")
-
-      JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
+        JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
+      }
     }
     tr.shutdown
   }
@@ -129,7 +123,7 @@ class TripleRushEvaluationSlurm extends SlurmDeployableAlgorithm {
 
 object SlurmEvalHelpers {
 
-  def executeEvaluationRun(query: Seq[TriplePattern], queryDescription: String, optimizer: Option[Optimizer], tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
+  def executeEvaluationRun(query: Seq[TriplePattern], queryDescription: String, queryRun: Int, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
     val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion
@@ -147,8 +141,14 @@ object SlurmEvalHelpers {
     runResult += ((s"freeMemoryBefore", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
     val startTime = System.nanoTime
-    val (queryResultFuture, queryStatsFuture) = tr.executeAdvancedQuery(query, optimizer)
-    val queryResult = Await.result(queryResultFuture, 7200.seconds)
+
+    val result = tr.resultIteratorForQuery(query)
+    var numberOfResults = 0
+    while (result.hasNext) {
+      val res = result.next
+      numberOfResults += 1
+    }
+
     val finishTime = System.nanoTime
     val executionTime = roundToMillisecondFraction(finishTime - startTime)
     val gcTimeAfter = getGcCollectionTime(gcs)
@@ -157,15 +157,11 @@ object SlurmEvalHelpers {
     val gcCountDuringQuery = gcCountAfter - gcCountBefore
     val compileTimeAfter = compilations.getTotalCompilationTime
     val compileTimeDuringQuery = compileTimeAfter - compileTimeBefore
-    val queryStats = Await.result(queryStatsFuture, 10.seconds)
-    val optimizingTime = roundToMillisecondFraction(queryStats("optimizingDuration").asInstanceOf[Long])
+
     runResult += ((s"queryId", queryDescription))
-    runResult += ((s"optimizer", optimizer.toString))
-    runResult += ((s"query", queryStats("optimizedQuery").toString))
-    runResult += ((s"exception", queryStats("exception").toString))
-    runResult += ((s"results", queryResult.size.toString))
+    runResult += ((s"queryRunId", queryRun.toString))
+    runResult += ((s"results", numberOfResults.toString))
     runResult += ((s"executionTime", executionTime.toString))
-    runResult += ((s"optimizingTime", optimizingTime.toString))
     runResult += ((s"totalMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
     runResult += ((s"freeMemory", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))

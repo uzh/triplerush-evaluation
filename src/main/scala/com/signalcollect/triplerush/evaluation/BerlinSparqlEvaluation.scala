@@ -19,10 +19,9 @@ import akka.actor.ActorRef
 import com.signalcollect.triplerush.TriplePattern
 import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
 import com.signalcollect.triplerush.sparql.Sparql
-import com.signalcollect.deployment.SlurmDeployableAlgorithm
 import com.signalcollect.triplerush.Dictionary
 
-class BerlinSparqlEvaluation extends SlurmDeployableAlgorithm {
+class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
   import SlurmEvalHelpers._
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {

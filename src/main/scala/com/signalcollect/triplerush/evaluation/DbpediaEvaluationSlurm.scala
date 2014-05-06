@@ -34,9 +34,9 @@ import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import com.signalcollect.triplerush.sparql.Sparql
 import com.signalcollect.triplerush.sparql.VariableEncoding
-import com.signalcollect.deployment.SlurmDeployableAlgorithm
+import com.signalcollect.deployment.TorqueDeployableAlgorithm
 
-class DbpediaEvaluationSlurm extends SlurmDeployableAlgorithm {
+class DbpediaEvaluationSlurm extends TorqueDeployableAlgorithm {
 
   import SlurmEvalHelpers._
 

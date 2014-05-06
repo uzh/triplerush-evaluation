@@ -18,10 +18,9 @@ import com.signalcollect.triplerush.optimizers.Optimizer
 import akka.actor.ActorRef
 import com.signalcollect.triplerush.TriplePattern
 import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
-import com.signalcollect.deployment.SlurmDeployableAlgorithm
 import com.signalcollect.triplerush.sparql.Sparql
 
-class TripleRushEvaluationISWCSlurm extends SlurmDeployableAlgorithm {
+class TripleRushEvaluationISWCSlurm extends TorqueDeployableAlgorithm {
   import ISWCSlurmEvalHelpers._
 
   val evaluationDescriptionKey = "evaluationDescription"
@@ -88,6 +87,7 @@ class TripleRushEvaluationISWCSlurm extends SlurmDeployableAlgorithm {
 
     println("Starting warm-up...")
 
+    
     for (i <- 1 to warmupRuns) {
       println(s"Running warmup $i/$warmupRuns")
       for (query <- queries) {
