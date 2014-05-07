@@ -56,3 +56,7 @@ deployment.slurm.config
 
 deployment.slurm.config
 deployment.slurm.config
+
+deployment.slurm.config.p-bsbm
+
+deployment.slurm.config.4store-bsbm
