@@ -73,9 +73,6 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
 
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
 
-    val optimizerInitStart = System.nanoTime
-    //val optimizer = optimizerCreator(tr)
-    val optimizerInitEnd = System.nanoTime
     val queries = if (rdfTypePartitioning) {
       LubmQueriesRdfType.fullQueries
     } else {
