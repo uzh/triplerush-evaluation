@@ -1,0 +1,87 @@
+# This is an example deployment configuration.
+# The actually used configuration has the be named deployment.config
+deployment {
+	torque {
+		server {
+			address = "gru.ifi.uzh.ch"
+			username = "bpaudel"
+		}
+		job {
+		    repetitions = 1
+			number-of-nodes = 1
+			cores-per-node = 40
+			memory = "113000"
+			#walltime = "00:2400:59"
+			walltime = "0"
+			#walltime = "00:600:59"
+			#walltime = "05:59:59"
+			#walltime = "0-00:120:59"
+			working-dir = "/home/slurm/${USER}-${SLURM_JOB_ID}"
+		}
+	}
+	jvm {
+		deployed-jar = "./target/scala-2.10/triplerush-evaluation-assembly-1.0-SNAPSHOT.jar"
+		#deployed-jar = "../signal-collect-slurm/target/scala-2.10/signal-collect-slurm-assembly-1.0-SNAPSHOT.jar"
+		binary-path = "/home/user/bpaudel/jdk1.8.0/bin/" 
+		#parameters = "-Xmx30g -Xms30g -XX:+AggressiveOpts -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:-UseBiasedLocking -XX:MaxInlineSize=1024 -Dsun.net.httpserver.maxReqTime=60000 -Dsun.net.httpserver.maxRspTime=60000"
+		parameters = "-Xmx113g -Xms113g -XX:+AggressiveOpts -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:-UseBiasedLocking -XX:MaxInlineSize=1024"
+	}
+	akka {
+	
+	kryo-initializer = "com.signalcollect.triplerush.serialization.TripleRushKryoInit"
+		kryo-registrations = [
+					      "com.signalcollect.triplerush.vertices.RootIndex",
+			"com.signalcollect.triplerush.vertices.SIndex",
+			"com.signalcollect.triplerush.vertices.PIndex",
+			"com.signalcollect.triplerush.vertices.OIndex",
+			"com.signalcollect.triplerush.vertices.SPIndex",
+			"com.signalcollect.triplerush.vertices.POIndex",
+			"com.signalcollect.triplerush.vertices.SOIndex",
+			"com.signalcollect.triplerush.TriplePattern",
+			"com.signalcollect.triplerush.PlaceholderEdge",
+			"com.signalcollect.triplerush.CardinalityRequest",
+			"com.signalcollect.triplerush.CardinalityReply",
+				"com.signalcollect.triplerush.PredicateStatsReply",
+			"com.signalcollect.triplerush.ChildIdRequest",
+			"com.signalcollect.triplerush.ChildIdReply",
+      		"com.signalcollect.triplerush.SubjectCountSignal",
+      		"com.signalcollect.triplerush.ObjectCountSignal",
+			"Array[com.signalcollect.triplerush.TriplePattern]",
+			"com.signalcollect.interfaces.SignalMessage$mcIJ$sp",
+			"com.signalcollect.interfaces.AddEdge",
+			"akka.actor.RepointableActorRef",
+			"com.signalcollect.triplerush.PredicateStats",			      
+      "com.signalcollect.triplerush.CombiningMessageBusFactory",
+      "com.signalcollect.triplerush.TripleMapperFactory$",
+      "com.signalcollect.triplerush.TripleRush$$anonfun$3",
+      "com.signalcollect.triplerush.TripleRush$$anonfun$4",
+      "com.signalcollect.triplerush.TripleRush$$anonfun$loadNtriples$1",
+      "akka.actor.RepointableActorRef"
+			
+ 		]
+	}	
+	
+	setup {
+		#copy-files = [
+        #    {
+        #        local-path = "./style.css"
+        #        remote-path = "/home/user/bpaudel/style.css"
+        #    }
+		#]
+	}
+
+		algorithm {
+		class = "com.signalcollect.triplerush.evaluation.JenaBsbmEvaluation"
+		parameters {
+			"evaluationDescription" = "bsbm-284826-jena"
+			"jitRepetitions" = "1000"
+			"dataset" = "BSBM"
+			"universities" = "284826"
+			"spreadsheetUsername" = "sharedataexperiments"
+			"spreadsheetPassword" = ""
+			"spreadsheetName" = "triplerush-iswc-evals"
+			"worksheetName" = "jena-bsbm"
+			"dataSource" = "ntriples"
+		}
+	}
+}
