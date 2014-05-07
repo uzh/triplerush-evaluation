@@ -22,6 +22,10 @@ import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
 class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
   import SlurmEvalHelpers._
 
+  /**
+   * For TR evaluation without counting result length
+   */
+  
   val evaluationDescriptionKey = "evaluationDescription"
   val warmupRunsKey = "jitRepetitions"
   val datasetKey = "dataset"
@@ -119,11 +123,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     tr.shutdown
   }
 
-}
-
-object SlurmEvalHelpers {
-
-  def executeEvaluationRun(query: Seq[TriplePattern], queryDescription: String, queryRun: Int, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
+    def executeEvaluationRun(query: Seq[TriplePattern], queryDescription: String, queryRun: Int, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
     val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion
@@ -175,6 +175,10 @@ object SlurmEvalHelpers {
     runResult += s"date" -> date.toString
     runResult
   }
+
+}
+
+object SlurmEvalHelpers {
 
   def loadLubm(universities: Int, triplerush: TripleRush, rdfTypePartitioning: Boolean) {
     println(s"Loading LUBM $universities ...")
