@@ -145,7 +145,7 @@ class BerlinSparqlEvaluationParallel extends TorqueDeployableAlgorithm {
       val startTime = System.nanoTime
       val queryOption = Sparql(queryString)(tr)
       val query = queryOption.get
-      val resultIterator = query.encodedResults
+      val resultIterator = query.resultIterator
 
       var numberOfResults = 0
       while (resultIterator.hasNext) {
