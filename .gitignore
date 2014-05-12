@@ -60,3 +60,17 @@ deployment.slurm.config
 deployment.slurm.config.p-bsbm
 
 deployment.slurm.config.4store-bsbm
+
+deployment.slurm.config.4store-lubm
+
+deployment.slurm.config.d-lubm
+
+deployment.slurm.config.jena-lubm
+
+deployment.slurm.config.p-lubm
+
+deployment.slurm.config.p-naive-bsbm
+
+deployment.slurm.config.p-naive-lubm
+
+deployment.slurm.config.sesame-lubm
