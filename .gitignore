@@ -77,3 +77,4 @@ deployment.slurm.config.sesame-lubm
 
 deployment.slurm.config.d-bsbm
 
+deployment.slurm.config.d-trinity
