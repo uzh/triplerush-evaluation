@@ -199,7 +199,6 @@ object SlurmEvalHelpers {
   }
 
   def loadLubmFromNTriples(universities: Int, triplerush: TripleRush) {
-    println(s"Loading LUBM $universities ... from NTriples")
     val lubmFolderName = s"lubm$universities-nt"
 
     val sourceFiles = filesIn(lubmFolderName).
@@ -207,7 +206,6 @@ object SlurmEvalHelpers {
       sorted
 
     for (src <- sourceFiles) {
-      println(s"src: $src")
       val ntFile = s"$src"
       triplerush.loadNtriples(ntFile)
     }
