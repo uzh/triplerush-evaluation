@@ -133,7 +133,7 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 SELECT ?X ?Y1 ?Y2 ?Y3
 WHERE {
-	?X ub:worksFor http://www.Department0.University0.edu .
+	?X ub:worksFor <http://www.Department0.University0.edu> .
    ?X rdf:type ub:FullProfessor .
    ?X ub:name ?Y1 .
    ?X ub:emailAddress ?Y2 .
@@ -145,7 +145,7 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 SELECT ?X
 WHERE {
-	?X ub:subOrganizationOf http://www.Department0.University0.edu .
+	?X ub:subOrganizationOf <http://www.Department0.University0.edu> .
 	?X rdf:type ub:ResearchGroup .
 }""",
     """
@@ -154,7 +154,7 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 SELECT ?X ?Y 
 WHERE {
-	?Y ub:subOrganizationOf http://www.University0.edu .
+	?Y ub:subOrganizationOf <http://www.University0.edu> .
    ?Y rdf:type ub:Department .
    ?X ub:worksFor ?Y .
    ?X rdf:type ub:FullProfessor .
