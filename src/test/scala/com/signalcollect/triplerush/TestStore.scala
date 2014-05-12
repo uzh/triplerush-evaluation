@@ -54,7 +54,32 @@ case class TRAdaptor(tr: TripleRush = new TripleRush) extends TestStore {
           count += 1
         }
     }
-    
+
+    stringLength
+  }
+
+  def getResultLength(sparql: String) = {
+    val parsedQuery = Sparql(sparql)(tr)
+    val resultMap = List.empty[Map[Int, String]]
+    var stringLength = 0
+    val dict = tr.dictionary
+    parsedQuery match {
+      case None => List.empty
+      case Some(p) =>
+        val resultIterator = p.resultIterator
+        var count = 0
+        val selectVarStrings = p.selectVariableIds.toArray.map(id => p.idToVariableName((-id) - 1))
+        while (resultIterator.hasNext) {
+          val res = resultIterator.next
+
+          var arrayIndex = 0
+          while (arrayIndex < selectVarStrings.length) {
+            stringLength += res(selectVarStrings(arrayIndex)).length
+            arrayIndex += 1
+          }
+          count += 1
+        }
+    }
     stringLength
   }
 }
@@ -95,20 +120,23 @@ case class JenaAdaptor() extends TestStore {
     val results = qe.execSelect
 
     var stringLength = 0
-    
+
     results.map {
       result =>
         selectVariableStrings.map {
           bindingName =>
             val bindingAsString = result.get(bindingName) match {
-              case res: Resource => stringLength += res.toString.length()
-              case lit: Literal => stringLength += lit.getLexicalForm.length()
-              case null => stringLength += 1
+              case res: Resource =>
+                stringLength += res.toString.length()
+              case lit: Literal =>
+                stringLength += lit.getLexicalForm.length()
+              case null =>
+                stringLength += 1
             }
             (bindingName, bindingAsString)
         }.toMap
     }.toList
-    
+
     stringLength
   }
 

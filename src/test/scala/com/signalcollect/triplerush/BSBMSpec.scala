@@ -28,7 +28,7 @@ class BSBMSpec extends FlatSpec with Matchers {
           if (trResults != jenaResults) {
             println(trResults)
             println(jenaResults)
-            println(s"Result for queryid $queryId: $q exists, tr size: ${trResults.size}, jena sie: ${jenaResults.size}")
+            println(s"Result for queryid $queryId: $q exists, tr size: ${trResults.size}, jena size: ${jenaResults.size}")
           }
           assert(trResults === jenaResults)
         }
@@ -69,7 +69,32 @@ class BSBMSpec extends FlatSpec with Matchers {
           val query = queries(subQueryId)
           val trResults = trA.getBindings(query)
           val jenaResults = jena.getBindings(query)
-          
+
+          val trResultCount = trA.execute(query).toSet.size
+          val jenaResultCount = jena.execute(query).toSet.size
+          //println(s"queryId $queryId, subQueryId: $subQueryId, TRresultCount: $trResultCount, jenaresultcount: $jenaResultCount, trstrlen: $trResults, jenastrlen: $jenaResults")
+          assert(trResults === jenaResults)
+        }
+      }
+    } finally {
+      tr.shutdown
+    }
+  }
+
+  "Parser" should "properly calculate result length" in {
+    val tr = new TripleRush
+    try {
+      val trA = TRAdaptor(tr)
+      val jena = new JenaAdaptor()
+      trA.loadNtriples("./bsbm_7.nt")
+      jena.loadNtriples("./bsbm_7.nt")
+
+      for ((queryId, queries) <- BerlinQueriesParameterized7.queries) {
+        for (subQueryId <- 1 to 25) {
+          val query = queries(subQueryId)
+          val trResults = trA.getResultLength(query)
+          val jenaResults = jena.getBindings(query)
+
           val trResultCount = trA.execute(query).toSet.size
           val jenaResultCount = jena.execute(query).toSet.size
           //println(s"queryId $queryId, subQueryId: $subQueryId, TRresultCount: $trResultCount, jenaresultcount: $jenaResultCount, trstrlen: $trResults, jenastrlen: $jenaResults")
