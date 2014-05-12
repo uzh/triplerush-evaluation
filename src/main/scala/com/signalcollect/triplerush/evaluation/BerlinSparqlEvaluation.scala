@@ -57,13 +57,13 @@ class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
     }
 
     println(s"Finished loading")
-    
+
     val optimizerInitialisationTime = measureTime {
       tr.prepareExecution
     }
 
     println(s"Finished optimizer initialization")
-    
+
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
 
     commonResults += ((s"optimizerInitialisationTime", optimizerInitialisationTime.toString))
@@ -97,7 +97,7 @@ class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
 
     val warmupTime = measureTime(warmup)
     commonResults += s"warmupTime" -> warmupTime.toString
-    
+
     println(s"Finished warm-up.")
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
@@ -118,7 +118,7 @@ class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
         }
       }
     }
-    
+
     tr.shutdown
   }
 
@@ -139,30 +139,31 @@ class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
     runResult += ((s"totalMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
     runResult += ((s"freeMemoryBefore", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
-    val isColdRun = (queryRun == 1) 
+    val isColdRun = (queryRun == 1)
     runResult += (("isColdRun", isColdRun.toString))
-    
+
     val dict = tr.dictionary
-    val startTime = System.nanoTime
-    val queryOption = Sparql(queryString)(tr)
-    val query = queryOption.get
-    val resultIterator = query.encodedResults
 
     var numberOfResults = 0
     var stringLength = 0
+
+    val startTime = System.nanoTime
+    val queryOption = Sparql(queryString)(tr)
+    val query = queryOption.get
+    val selectVarStrings = query.selectVariableIds.toArray.map(id => query.idToVariableName((-id) - 1))
+    val resultIterator = query.resultIterator
+
     while (resultIterator.hasNext) {
       val res = resultIterator.next
       var arrayIndex = 0
-      while (arrayIndex < res.length) {
-        stringLength += dict.unsafeDecode(res(arrayIndex)).length()
+      while (arrayIndex < selectVarStrings.length) {
+        stringLength += res(selectVarStrings(arrayIndex)).length
         arrayIndex += 1
       }
       numberOfResults += 1
     }
 
-    //val (numberOfResults, topKEntities) = transformResults(tr, query, resultIterator)
     val finishTime = System.nanoTime
-    //println("Number of results: " + numberOfResults)
     val executionTime = roundToMillisecondFraction(finishTime - startTime)
     val gcTimeAfter = getGcCollectionTime(gcs)
     val gcCountAfter = getGcCollectionCount(gcs)
