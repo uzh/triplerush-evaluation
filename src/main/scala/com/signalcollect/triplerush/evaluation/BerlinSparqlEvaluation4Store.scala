@@ -82,23 +82,52 @@ class BerlinSparqlEvaluation4Store extends TorqueDeployableAlgorithm {
         (s"echo $node" #>> new java.io.File("/etc/4s-cluster")).!
     }
 
-    val clusterCreate = "4s-cluster-create demo1".!
-    println(s"Result of clusterCreate: $clusterCreate")
-    val clusterStart = "4s-cluster-start demo1".!
-    println(s"Result of clusterCreate: $clusterStart")
+    val slurmJobId = System.getenv("SLURM_JOB_ID")
+    val userName = System.getenv("USER")
+    val workingDir = s"/home/slurm/$userName-$slurmJobId"
+
+    println(s"working directory is: $workingDir")
+
+    val numberOfNodes = nodeNameList.size
+    val numberOfSegments = if (numberOfNodes == 2) {
+      128
+    } else if (numberOfNodes == 4) {
+      256
+    } else if (numberOfNodes == 8) {
+      512
+    }
+
+    val dbName = s"bsbm${datasetSize}nn$numberOfNodes"
+
+    //Let's stop cluster if there's one already running
+    val clusterStopBeforeBeginning = "4s-cluster-stop $dbName".!
+    println(s"Stopped 4s-cluster: $clusterStopBeforeBeginning")
+
+    //val clusterBackendCommand = s"4s-backend-setup --node ${numberOfNodes - 1} --cluster $numberOfNodes --segments $numberOfSegments demo1"
+    //val clusterBackend = (clusterBackendCommand).!
+    //println(s"Result of clusterBackend: $clusterBackend")
+    val clusterCreateCommand = s"4s-cluster-create --segments $numberOfSegments $dbName"
+    val clusterCreate = (clusterCreateCommand).!
+    println(s"clusterCreate command: $clusterCreate")
+    Thread.sleep(60000)
+    val clusterStartCommand = s"4s-cluster-start $dbName"
+    val clusterStart = (clusterStartCommand).!
+    println(s"Result of clusterStart: $clusterStart")
+    Thread.sleep(60000)
 
     val queriesObjectName = s"com.signalcollect.triplerush.evaluation.BerlinSparqlParameterized$datasetSize"
     val ntriplesFileLocation = s"berlinsparql_$datasetSize-nt/dataset_$datasetSize.nt"
 
-    val clusterImportCommand = s"4s-import demo1 --format ntriples $ntriplesFileLocation"
+    val clusterImportCommand = s"4s-import $dbName -v --format ntriples $ntriplesFileLocation"
     val importStartTime = System.nanoTime()
-    val clusterImport = clusterImportCommand.!
+    val clusterImport = (clusterImportCommand).!
     val importEndTime = System.nanoTime()
     val loadingTime = roundToMillisecondFraction(importEndTime - importStartTime)
     println(s"Finished loading: $clusterImport")
+    Thread.sleep(60000)
 
     var commonResults = parameters
-    commonResults += "numberOfNodes" -> "FIX"
+    commonResults += "numberOfNodes" -> numberOfNodes.toString
     commonResults += "jitRepetitions" -> warmupRuns.toString
     commonResults += "numberOfWorkers" -> "-"
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
@@ -124,7 +153,7 @@ class BerlinSparqlEvaluation4Store extends TorqueDeployableAlgorithm {
             for (subQueryId <- listOfSubQueryIds) {
               val query = listOfQueries(subQueryId)
               println(s"Running warmup $subWarmUpRun for query $queryId-$subQueryId.")
-              val result = executeEvaluationRun(query, 0, s"${queryId.toString}", commonResults)
+              val result = executeEvaluationRun(query, 0, s"${queryId.toString}", commonResults, workingDir, dbName)
               subWarmUpRun += 1
             }
           }
@@ -146,7 +175,7 @@ class BerlinSparqlEvaluation4Store extends TorqueDeployableAlgorithm {
         if (queryRun <= 11) {
           val query = listOfQueries(subQueryId)
           println(s"Running evaluation for query $queryId-$subQueryId.")
-          val result = executeEvaluationRun(query, queryRun, s"${queryId.toString}", commonResults)
+          val result = executeEvaluationRun(query, queryRun, s"${queryId.toString}", commonResults, workingDir, dbName)
           resultReporter(result)
           println(s"Done running evaluation for query $queryId-$subQueryId. Awaiting idle")
           JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
@@ -156,11 +185,17 @@ class BerlinSparqlEvaluation4Store extends TorqueDeployableAlgorithm {
       }
     }
 
-    val clusterStop = "4s-cluster-stop demo1".!
+    val clusterStopCommand = s"4s-cluster-stop $dbName"
+    val clusterStop = (clusterStopCommand).!
     println(s"Stopped 4s-cluster: $clusterStop")
+    Thread.sleep(60000)
+    
+    val deleteDbDir = "rm -rf /var/lib/4store/$dbName".!
+    println(s"Delete directories: $deleteDbDir")
   }
 
-  def executeEvaluationRun(queryString: String, queryRun: Int, queryDescription: String, commonResults: Map[String, String]): Map[String, String] = {
+  def executeEvaluationRun(queryString: String, queryRun: Int, queryDescription: String, commonResults: Map[String, String], 
+      workingDir: String, dbName: String): Map[String, String] = {
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
     val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion
@@ -181,15 +216,26 @@ class BerlinSparqlEvaluation4Store extends TorqueDeployableAlgorithm {
     runResult += (("isColdRun", isColdRun.toString))
 
     val queryToRun = queryString + " #EOQ"
-    (s"echo $queryToRun" #> new java.io.File("/home/user/bpaudel/4s_query.q")).!
-    //val clusterQueryCommand = "4s-query demo1 --soft-limit -1 '${queryToRun}'" //4s-query -P demo1 < query.rq
-    val clusterQueryCommand = "4s-query -P demo1 --soft-limit -1 < /home/user/bpaudel/4s_query.q" //4s-query -P demo1 < query.rq
+    val queryFileName = s"$workingDir/4s_query.q"
+    (s"echo $queryToRun" #> new java.io.File(queryFileName)).!
 
+    val queryFile = new java.io.File(queryFileName)
+    val queryCommand = s"4s-query -P $dbName --soft-limit -1"
     val startTime = System.nanoTime
-    val queryRunResult = ("4s-query -P demo1 --soft-limit -1" #< new java.io.File("/home/user/bpaudel/4s_query.q") #| "grep '<result>'" #| "wc -l").!!
+    val queryRunResult = (queryCommand #< queryFile).!!
     val finishTime = System.nanoTime
 
-    //val numberOfResults = ("grep '<result>' /home/user/bpaudel/4s_query_result.txt" #| "wc -l")!!
+    val substrToCheckValidResults = "<result>"
+    val numberOfValidResults = substrToCheckValidResults.r.findAllMatchIn(queryRunResult).length
+
+    val substrToCheckCorrectness = "<results>"
+    val numberOfResultXmlElements = substrToCheckCorrectness.r.findAllMatchIn(queryRunResult).length
+
+    val numberOfResults = if (numberOfResultXmlElements == 0) {
+      -1
+    } else {
+      numberOfValidResults
+    }
 
     val executionTime = roundToMillisecondFraction(finishTime - startTime)
     val gcTimeAfter = getGcCollectionTime(gcs)
@@ -200,8 +246,8 @@ class BerlinSparqlEvaluation4Store extends TorqueDeployableAlgorithm {
     val compileTimeDuringQuery = compileTimeAfter - compileTimeBefore
     runResult += ((s"queryId", queryDescription))
     runResult += ((s"queryRunId", queryRun.toString))
-    runResult += ((s"results", queryRunResult.toString))
-    runResult += ((s"resultLength", "FIX"))
+    runResult += ((s"results", numberOfResults.toString))
+    runResult += ((s"resultLength", "-"))
     runResult += ((s"query", queryString))
     runResult += ((s"executionTime", executionTime.toString))
     runResult += ((s"totalMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
