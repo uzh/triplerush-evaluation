@@ -74,3 +74,6 @@ deployment.slurm.config.p-naive-bsbm
 deployment.slurm.config.p-naive-lubm
 
 deployment.slurm.config.sesame-lubm
+
+deployment.slurm.config.d-bsbm
+
