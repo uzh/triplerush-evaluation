@@ -193,7 +193,7 @@ object SlurmEvalHelpers {
         val predictedTotalLoadingTimeInSeconds = totalSplits * loadingTimePerSplitInSeconds
         val predictedRemainingLoadingTimeInSeconds = predictedTotalLoadingTimeInSeconds - loadingTimeSoFarInSeconds
         println(s"Extrapolated total memory usage for full data set: ${predictedTotalMemoryUsage}/${totalMemoryInGB} GB")
-        println(s"Extrapolated loading time (passed/remaining): ${loadingTimeSoFarInSeconds.round}/${predictedTotalLoadingTimeInSeconds.round} seconds")
+        println(s"Extrapolated loading time (passed/total): ${loadingTimeSoFarInSeconds.round}/${predictedTotalLoadingTimeInSeconds.round} seconds")
       }
     }
     val lubmFolderName =
