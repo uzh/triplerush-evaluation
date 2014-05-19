@@ -25,7 +25,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
   /**
    * For TR evaluation without counting result length
    */
-  
+
   val evaluationDescriptionKey = "evaluationDescription"
   val warmupRunsKey = "jitRepetitions"
   val datasetKey = "dataset"
@@ -43,7 +43,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     val warmupRuns = parameters(warmupRunsKey).toInt
     val dataset = parameters(datasetKey)
     val universities: Option[String] = parameters.get(universitiesKey)
-   //val optimizerCreatorName = parameters(optimizerCreatorKey)
+    //val optimizerCreatorName = parameters(optimizerCreatorKey)
     //val optimizerCreator = getObject[Function1[TripleRush, Option[Optimizer]]](optimizerCreatorName)
     val spreadsheetUsername = parameters(spreadsheetUsernameKey)
     val spreadsheetPassword = parameters(spreadsheetPasswordKey)
@@ -96,9 +96,9 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
         }
       }
       println(s"Finished warm-up.")
-      JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 120)
     }
-    
+
     val warmupTime = measureTime(warmup)
     commonResults += s"warmupTime" -> warmupTime.toString
 
@@ -120,7 +120,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     tr.shutdown
   }
 
-    def executeEvaluationRun(query: Seq[TriplePattern], queryDescription: String, queryRun: Int, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
+  def executeEvaluationRun(query: Seq[TriplePattern], queryDescription: String, queryRun: Int, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
     val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion
@@ -179,6 +179,23 @@ object SlurmEvalHelpers {
 
   def loadLubm(universities: Int, triplerush: TripleRush, rdfTypePartitioning: Boolean) {
     println(s"Loading LUBM $universities ...")
+    def currentMemoryUsageInGB = bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory)
+    def totalMemoryInGB = bytesToGigabytes(Runtime.getRuntime.totalMemory)
+    val baseTime = System.currentTimeMillis
+    val baseMemoryUsage = currentMemoryUsageInGB
+    def printMemoryUsage(splitsLoaded: Int, totalSplits: Int) {
+      println(s"Memory usage for $splitsLoaded/$totalSplits splits: ${currentMemoryUsageInGB}GB/${totalMemoryInGB}GB")
+      if (splitsLoaded != 0) {
+        val memoryPerSplit = (currentMemoryUsageInGB - baseMemoryUsage) / splitsLoaded.toDouble
+        val predictedTotalMemoryUsage = baseMemoryUsage + totalSplits * memoryPerSplit
+        val loadingTimeSoFarInSeconds = ((System.currentTimeMillis - baseTime) / 1000.0)
+        val loadingTimePerSplitInSeconds = loadingTimeSoFarInSeconds / splitsLoaded.toDouble
+        val predictedTotalLoadingTimeInSeconds = totalSplits * loadingTimePerSplitInSeconds
+        val predictedRemainingLoadingTimeInSeconds = predictedTotalLoadingTimeInSeconds - loadingTimeSoFarInSeconds
+        println(s"Extrapolated total memory usage for full data set: ${predictedTotalMemoryUsage}/${totalMemoryInGB} GB")
+        println(s"Extrapolated loading time (passed/remaining): ${loadingTimeSoFarInSeconds.round}/${predictedTotalLoadingTimeInSeconds.round} seconds")
+      }
+    }
     val lubmFolderName =
       if (rdfTypePartitioning) {
         println(s"rdfTypePartitioning is true, directory is: lubm$universities-type-filtered-splits")
@@ -187,12 +204,14 @@ object SlurmEvalHelpers {
         println(s"rdfTypePartitioning is false, directory is: lubm$universities-filtered-splits")
         s"lubm$universities-filtered-splits"
       }
+    printMemoryUsage(0, 2880)
     for (splitId <- 0 until 2880) {
-      val splitFile = s"./$lubmFolderName/$splitId.filtered-split"
+      val splitFile = s"/home/user/bpaudel/$lubmFolderName/$splitId.filtered-split"
       triplerush.loadBinary(splitFile, Some(splitId))
-      if (splitId % 288 == 279) {
-        println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
+      if (splitId % 320 == 319) {
+        println(s"Dispatched up to split #${splitId + 1}/2880, awaiting idle.")
         triplerush.awaitIdle
+        printMemoryUsage(splitId + 1, 2880)
         println(s"Continuing graph loading...")
       }
     }
