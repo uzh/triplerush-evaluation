@@ -78,3 +78,9 @@ deployment.slurm.config.sesame-lubm
 deployment.slurm.config.d-bsbm
 
 deployment.slurm.config.d-trinity
+
+deployment.slurm.config.d-trinity-naive
+
+deployment.slurm.config.d-trinity-naive.kraken
+
+deployment.slurm.config.d-trinity.kraken
