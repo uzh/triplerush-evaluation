@@ -71,7 +71,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
 
     println(s"Finished optimizer initialization")
 
-    JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 540)
 
     val queries = if (rdfTypePartitioning) {
       LubmQueriesRdfType.fullQueries
@@ -80,7 +80,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     }
 
     commonResults += ((s"optimizerInitialisationTime", optimizerInitialisationTime.toString))
-    commonResults += ((s"optimizerName", "ExplorationOptimizer"))
+    commonResults += ((s"optimizer", "ExplorationOptimizer"))
     commonResults += (("loadingTime", loadingTime.toString))
     commonResults += s"loadNumber" -> universities.toString
     commonResults += s"dataSet" -> s"lubm$universities"
@@ -96,7 +96,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
         }
       }
       println(s"Finished warm-up.")
-      JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 120)
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 240)
     }
 
     val warmupTime = measureTime(warmup)
@@ -114,7 +114,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
         tr.awaitIdle
         println("Idle")
 
-        JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
+        JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 120)
       }
     }
     tr.shutdown
@@ -184,7 +184,7 @@ object SlurmEvalHelpers {
     val baseTime = System.currentTimeMillis
     val baseMemoryUsage = currentMemoryUsageInGB
     def printMemoryUsage(splitsLoaded: Int, totalSplits: Int) {
-      println(s"Memory usage for $splitsLoaded/$totalSplits splits: ${currentMemoryUsageInGB}GB/${totalMemoryInGB}GB")
+      println(s"Memory usage for $splitsLoaded/$totalSplits splits: ${currentMemoryUsageInGB}/${totalMemoryInGB} GB")
       if (splitsLoaded != 0) {
         val memoryPerSplit = (currentMemoryUsageInGB - baseMemoryUsage) / splitsLoaded.toDouble
         val predictedTotalMemoryUsage = baseMemoryUsage + totalSplits * memoryPerSplit
