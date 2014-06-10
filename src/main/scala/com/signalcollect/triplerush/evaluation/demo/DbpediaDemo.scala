@@ -41,9 +41,10 @@ import java.net.URLDecoder
 import com.signalcollect.triplerush.sparql.Sparql
 import com.signalcollect.triplerush.sparql.VariableEncoding
 import com.signalcollect.triplerush.optimizers.ExplorationOptimizerCreator
+import com.signalcollect.triplerush.HashMapDictionary
 
 class DbpediaDemo extends TorqueDeployableAlgorithm {
-
+  val dictionary: Dictionary = new HashMapDictionary()
   def loadDbpedia(triplerush: TripleRush) {
     println(s"Loading Dbpedia ...")
     val dbpediaFolderName = "dbpedia-filtered-splits"
@@ -68,7 +69,7 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
 
     println("TripleRush has been started.")
 
-    Dictionary.loadFromFile("dbpedia-binary-old/dictionary.txt")
+    dictionary.loadFromFile("dbpedia-binary-old/dictionary.txt")
 
     println("finished loading dictionary.")
 
@@ -136,6 +137,7 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
 }
 
 object DbpediaIframeGenerator {
+  val dictionary: Dictionary = new HashMapDictionary()
   var requestURL = ""
   var queryURL = ""
   def setRequestURL(url: String) {
@@ -245,7 +247,7 @@ object DbpediaIframeGenerator {
   def transformResults(tr: TripleRush, queries: List[Sparql], is: List[Iterator[Array[Int]]]): (Int, Map[String, Double]) = {
     val targetId = queries.head.variableNameToId("T")
     val intermediateId = queries.head.variableNameToId("A")
-    val wikilinkId = Dictionary("http://dbpedia.org/property/wikilink")
+    val wikilinkId = dictionary("http://dbpedia.org/property/wikilink")
     val targetIndex = VariableEncoding.variableIdToDecodingIndex(targetId)
     val intermediateIndex = VariableEncoding.variableIdToDecodingIndex(intermediateId)
     val countsMap = new IntIntHashMap
@@ -282,8 +284,8 @@ object DbpediaIframeGenerator {
 
         val incomingEdgesAdjustedCount = count.toDouble / math.pow(incomingEdgeCount, 1.0 / 3.0)
 
-        //println(s"id: ${Dictionary.unsafeDecode(id)}, count: $count, incomingEdgeCount: $incomingEdgeCount, twoHops: $twoHopsIncomingEdgeCount")
-        //println(s"id: ${Dictionary.unsafeDecode(id)}, count: $count, incomingEdgeCount: $incomingEdgeCount")
+        //println(s"id: ${dictionary.unsafeDecode(id)}, count: $count, incomingEdgeCount: $incomingEdgeCount, twoHops: $twoHopsIncomingEdgeCount")
+        //println(s"id: ${dictionary.unsafeDecode(id)}, count: $count, incomingEdgeCount: $incomingEdgeCount")
         //val incomingEdgesAdjustedCount = (count.toDouble / totalEdgeCount) * math.log(totalNodes / (incomingEdgeCount + 1))
         (id, incomingEdgesAdjustedCount)
     }.seq
@@ -307,7 +309,7 @@ object DbpediaIframeGenerator {
     println("got topK")
     val topKCountsMap = topKQueue.toMap
     val topKResults = DbpediaQueries.normalize(topKCountsMap)
-    val topKEntities = topKResults.map(entry => (Dictionary.unsafeDecode(entry._1), entry._2))
+    val topKEntities = topKResults.map(entry => (dictionary.unsafeDecode(entry._1), entry._2))
     (numberOfResults, topKEntities)
   }
 
