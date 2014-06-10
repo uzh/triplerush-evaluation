@@ -49,3 +49,5 @@ deployment.config
 jena-deployment.config
 
 sesame-deployment.config
+
+deployment.slurm.config
