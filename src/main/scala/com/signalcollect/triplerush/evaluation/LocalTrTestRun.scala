@@ -6,10 +6,10 @@ import akka.actor.ActorSystem
 import com.signalcollect.configuration.AkkaConfig
 import akka.event.Logging
 import com.signalcollect.configuration.ActorSystemRegistry
-import com.signalcollect.nodeprovisioning.NodeActorCreator
 import akka.actor.Props
-import com.signalcollect.nodeprovisioning.DefaultNodeActor
 import com.signalcollect.configuration.GraphConfiguration
+import com.signalcollect.node.NodeActorCreator
+import com.signalcollect.interfaces.NodeActor
 
 object LocalTrTestRun extends App {
   val j = new DbpediaEvaluation
@@ -24,7 +24,7 @@ object LocalTrTestRun extends App {
   val system: ActorSystem = ActorSystem("SignalCollect", akkaConfig(2552, kryoRegistrations))
   ActorSystemRegistry.register(system)
   val nodeControllerCreator = NodeActorCreator(0, 1, None)
-  val nodeController = system.actorOf(Props[DefaultNodeActor].withCreator(
+  val nodeController = system.actorOf(Props[NodeActor].withCreator(
     nodeControllerCreator.create), name = "DefaultNodeActor" + 0.toString)
   val parameterMap = config.getConfig("deployment.algorithm.parameters").entrySet.map {
     entry => (entry.getKey, entry.getValue.unwrapped.toString)
