@@ -40,9 +40,11 @@ import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import com.signalcollect.triplerush.sparql.Sparql
 import com.signalcollect.triplerush.sparql.VariableEncoding
+import com.signalcollect.triplerush.HashMapDictionary
 
 class DbpediaEvaluation extends TorqueDeployableAlgorithm {
 
+  val dictionary: Dictionary = new HashMapDictionary()
   import EvalHelpers._
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
@@ -120,7 +122,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
 
   def transformResults(tr: TripleRush, query: Sparql, i: Iterator[Array[Int]]): (Int, Map[String, Double]) = {
     val targetId = query.variableNameToId("T")
-    val wikilinkId = tr.dictionary("http://dbpedia.org/property/wikilink")
+    val wikilinkId = dictionary("http://dbpedia.org/property/wikilink")
     val targetIndex = VariableEncoding.variableIdToDecodingIndex(targetId)
     val countsMap = new IntIntHashMap
     var numberOfResults = 0
@@ -154,7 +156,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     }
     val topKCountsMap = topKQueue.toMap
     val topKResults = DbpediaQueries.countMapToDistribution(topKCountsMap)
-    val topKEntities = topKResults.map(entry => (tr.dictionary.unsafeDecode(entry._1), entry._2))
+    val topKEntities = topKResults.map(entry => (dictionary.unsafeDecode(entry._1), entry._2))
     (numberOfResults, topKEntities)
   }
 
