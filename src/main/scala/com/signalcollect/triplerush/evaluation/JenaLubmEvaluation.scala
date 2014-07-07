@@ -25,6 +25,7 @@ import com.hp.hpl.jena.rdf.model.ModelFactory
 import com.hp.hpl.jena.rdf.model.Model
 import com.hp.hpl.jena.query.QueryFactory
 import com.hp.hpl.jena.query.QueryExecutionFactory
+import com.signalcollect.GraphBuilder
 
 class JenaLubmEvaluation extends TorqueDeployableAlgorithm {
   import SlurmEvalHelpers._
@@ -40,6 +41,7 @@ class JenaLubmEvaluation extends TorqueDeployableAlgorithm {
   val worksheetNameKey = "worksheetName"
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
+    GraphBuilder.withPreallocatedNodes(nodeActors).build.shutdown
     println("Jena Eval")
     println(s"Received parameters $parameters")
     val evaluationDescription = parameters(evaluationDescriptionKey)
