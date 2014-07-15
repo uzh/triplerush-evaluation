@@ -8,7 +8,7 @@ version := "1.0-SNAPSHOT"
 
 organization := "com.signalcollect"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.11.1"
 
 scalacOptions ++= Seq("-optimize", "-Yinline-warnings", "-feature", "-deprecation")
 
@@ -29,15 +29,15 @@ resolvers +=
 
 /** Dependencies */
 libraryDependencies ++= Seq(
-  "org.scala-lang" % "scala-library" % "2.10.4"  % "compile",
+  "org.scala-lang" % "scala-library" % "2.11.1"  % "compile",
   "com.google.collections" % "google-collections" % "1.0",
   "org.apache.jena" % "apache-jena-libs" % "2.11.1" % "compile",
   "org.openrdf.sesame" % "sesame-runtime" % "2.7.11" % "compile",
   "com.sleepycat" % "je" % "5.0.103",
   "junit" % "junit" % "4.8.2"  % "test",
-  "org.specs2" %% "specs2" % "2.3.3"  % "test",
+  "org.specs2" %% "specs2" % "2.3.11"  % "test",
   "org.scalacheck" %% "scalacheck" % "1.11.0" % "test",
-  "org.scalatest" %% "scalatest" % "2.1.0" % "test",
+  "org.scalatest" %% "scalatest" % "2.2.0" % "test",
   "org.easymock" % "easymock" % "3.2" % "test",
   "net.databinder" %% "dispatch-http" % "0.8.10"
   )
