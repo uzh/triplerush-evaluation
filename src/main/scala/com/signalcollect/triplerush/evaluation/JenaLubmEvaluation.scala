@@ -41,7 +41,7 @@ class JenaLubmEvaluation extends TorqueDeployableAlgorithm {
   val worksheetNameKey = "worksheetName"
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
-    GraphBuilder.withPreallocatedNodes(nodeActors).build.shutdown
+    new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors).build.shutdown
     println("Jena Eval")
     println(s"Received parameters $parameters")
     val evaluationDescription = parameters(evaluationDescriptionKey)

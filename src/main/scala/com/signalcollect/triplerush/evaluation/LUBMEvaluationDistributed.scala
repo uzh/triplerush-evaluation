@@ -36,7 +36,7 @@ class LUBMEvaluationDistributed extends TorqueDeployableAlgorithm {
     val datasetSize = parameters("universities")
     val warmupRuns = parameters("jitRepetitions").toInt
 
-    val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
+    val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder)
     println("TripleRush has been started.")
 

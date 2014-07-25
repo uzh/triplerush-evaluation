@@ -68,7 +68,7 @@ class TripleRushEvaluation extends TorqueDeployableAlgorithm {
     val worksheetName = parameters(worksheetNameKey)
     val dataSource = parameters(dataSourceKey)
     val rdfTypePartitioning = parameters(rdfTypePartitioningKey).toBoolean
-    val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
+    val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder)
     println("TripleRush has been started.")
     var commonResults = parameters

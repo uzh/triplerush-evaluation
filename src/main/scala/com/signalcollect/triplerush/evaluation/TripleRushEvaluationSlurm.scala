@@ -50,7 +50,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     val spreadsheetName = parameters(spreadsheetNameKey)
     val worksheetName = parameters(worksheetNameKey)
     val rdfTypePartitioning = parameters(rdfTypePartitioningKey).toBoolean
-    val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
+    val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder)
     println("TripleRush has been started.")
     var commonResults = parameters
@@ -182,7 +182,7 @@ object SlurmEvalHelpers {
     val lubmFolderName =
       if (rdfTypePartitioning) {
         println(s"rdfTypePartitioning is true, directory is: lubm$universities-type-filtered-splits")
-        s"lubm$universities-type-filtered-splits"
+        s"../bpaudel/lubm$universities-type-filtered-splits"
       } else {
         println(s"rdfTypePartitioning is false, directory is: lubm$universities-filtered-splits")
         s"lubm$universities-filtered-splits"

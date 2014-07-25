@@ -64,7 +64,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     var commonResults = parameters
     commonResults += "warmupRuns" -> warmupRuns.toString
 
-    val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
+    val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder = graphBuilder, optimizerCreator = NoOptimizerCreator)
 
     println("TripleRush has been started.")

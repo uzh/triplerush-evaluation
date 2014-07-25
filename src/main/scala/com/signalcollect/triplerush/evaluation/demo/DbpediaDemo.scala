@@ -63,7 +63,7 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
     println(s"Received parameters $parameters")
 
     //loading form filtered splits
-    val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
+    val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder, optimizerCreator = ExplorationOptimizerCreator)
     //val tr = new TripleRush(graphBuilder, optimizerCreator = NoOptimizerCreator)
 
@@ -81,7 +81,7 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
     println("finished loading dbpedia.")
 
     /*
-    val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
+    val graphBuilder = new GraphBuilder[Long, Any]().PreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder = graphBuilder, optimizerCreator = ExplorationOptimizerCreator)
 
     println("TripleRush has been started.")

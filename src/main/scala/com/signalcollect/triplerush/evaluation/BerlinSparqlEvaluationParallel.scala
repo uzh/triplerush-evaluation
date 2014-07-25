@@ -38,7 +38,7 @@ class BerlinSparqlEvaluationParallel extends TorqueDeployableAlgorithm {
     val optimizerCreator = getObject[Function1[TripleRush, Option[Optimizer]]](optimizerCreatorName)
     val warmupRuns = parameters("jitRepetitions").toInt
 
-    val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
+    val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder)
     println("TripleRush has been started.")
 
@@ -122,61 +122,61 @@ class BerlinSparqlEvaluationParallel extends TorqueDeployableAlgorithm {
     tr.shutdown
   }
 
-    def executeEvaluationRun(queryString: String, queryRun: Int, queryDescription: String, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
-      val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
-      val compilations = ManagementFactory.getCompilationMXBean
-      val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion
-      val jvmLibraryPath = ManagementFactory.getRuntimeMXBean.getLibraryPath
-      val jvmArguments = ManagementFactory.getRuntimeMXBean.getInputArguments
-      var runResult = commonResults
-      runResult += (("javaVmVersion", javaVersion))
-      runResult += (("jvmLibraryPath", jvmLibraryPath))
-      runResult += (("jvmArguments", jvmArguments.mkString(" ")))
-      val date: Date = new Date
-      val gcTimeBefore = getGcCollectionTime(gcs)
-      val gcCountBefore = getGcCollectionCount(gcs)
-      val compileTimeBefore = compilations.getTotalCompilationTime
-      runResult += ((s"totalMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
-      runResult += ((s"freeMemoryBefore", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
-      runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
-      val isColdRun = (queryRun == 1)
-      runResult += (("isColdRun", isColdRun.toString))
+  def executeEvaluationRun(queryString: String, queryRun: Int, queryDescription: String, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
+    val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
+    val compilations = ManagementFactory.getCompilationMXBean
+    val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion
+    val jvmLibraryPath = ManagementFactory.getRuntimeMXBean.getLibraryPath
+    val jvmArguments = ManagementFactory.getRuntimeMXBean.getInputArguments
+    var runResult = commonResults
+    runResult += (("javaVmVersion", javaVersion))
+    runResult += (("jvmLibraryPath", jvmLibraryPath))
+    runResult += (("jvmArguments", jvmArguments.mkString(" ")))
+    val date: Date = new Date
+    val gcTimeBefore = getGcCollectionTime(gcs)
+    val gcCountBefore = getGcCollectionCount(gcs)
+    val compileTimeBefore = compilations.getTotalCompilationTime
+    runResult += ((s"totalMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
+    runResult += ((s"freeMemoryBefore", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
+    runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
+    val isColdRun = (queryRun == 1)
+    runResult += (("isColdRun", isColdRun.toString))
 
-      val startTime = System.nanoTime
-      val queryOption = Sparql(queryString)(tr)
-      val query = queryOption.get
-      val resultIterator = query.resultIterator
+    val startTime = System.nanoTime
+    val queryOption = Sparql(queryString)(tr)
+    val query = queryOption.get
+    val resultIterator = query.resultIterator
 
-      var numberOfResults = 0
-      while (resultIterator.hasNext) {
-        val res = resultIterator.next
-        numberOfResults += 1
-      }
+    var numberOfResults = 0
+    while (resultIterator.hasNext) {
+      val res = resultIterator.next
+      numberOfResults += 1
+    }
 
-      val finishTime = System.nanoTime
-      val executionTime = roundToMillisecondFraction(finishTime - startTime)
-      val gcTimeAfter = getGcCollectionTime(gcs)
-      val gcCountAfter = getGcCollectionCount(gcs)
-      val gcTimeDuringQuery = gcTimeAfter - gcTimeBefore
-      val gcCountDuringQuery = gcCountAfter - gcCountBefore
-      val compileTimeAfter = compilations.getTotalCompilationTime
-      val compileTimeDuringQuery = compileTimeAfter - compileTimeBefore
-      runResult += ((s"queryId", queryDescription))
-      runResult += ((s"queryRunId", queryRun.toString))
-      runResult += ((s"results", numberOfResults.toString))
-      runResult += ((s"query", queryString))
-      runResult += ((s"executionTime", executionTime.toString))
-      runResult += ((s"totalMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
-      runResult += ((s"freeMemory", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
-      runResult += ((s"usedMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
-      runResult += ((s"executionHostname", java.net.InetAddress.getLocalHost.getHostName))
-      runResult += (("gcTimeAfter", gcTimeAfter.toString))
-      runResult += (("gcCountAfter", gcCountAfter.toString))
-      runResult += (("gcTimeDuringQuery", gcTimeDuringQuery.toString))
-      runResult += (("gcCountDuringQuery", gcCountDuringQuery.toString))
-      runResult += (("compileTimeAfter", compileTimeAfter.toString))
-      runResult += (("compileTimeDuringQuery", compileTimeDuringQuery.toString))
-      runResult += s"date" -> date.toString
-      runResult
+    val finishTime = System.nanoTime
+    val executionTime = roundToMillisecondFraction(finishTime - startTime)
+    val gcTimeAfter = getGcCollectionTime(gcs)
+    val gcCountAfter = getGcCollectionCount(gcs)
+    val gcTimeDuringQuery = gcTimeAfter - gcTimeBefore
+    val gcCountDuringQuery = gcCountAfter - gcCountBefore
+    val compileTimeAfter = compilations.getTotalCompilationTime
+    val compileTimeDuringQuery = compileTimeAfter - compileTimeBefore
+    runResult += ((s"queryId", queryDescription))
+    runResult += ((s"queryRunId", queryRun.toString))
+    runResult += ((s"results", numberOfResults.toString))
+    runResult += ((s"query", queryString))
+    runResult += ((s"executionTime", executionTime.toString))
+    runResult += ((s"totalMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
+    runResult += ((s"freeMemory", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
+    runResult += ((s"usedMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
+    runResult += ((s"executionHostname", java.net.InetAddress.getLocalHost.getHostName))
+    runResult += (("gcTimeAfter", gcTimeAfter.toString))
+    runResult += (("gcCountAfter", gcCountAfter.toString))
+    runResult += (("gcTimeDuringQuery", gcTimeDuringQuery.toString))
+    runResult += (("gcCountDuringQuery", gcCountDuringQuery.toString))
+    runResult += (("compileTimeAfter", compileTimeAfter.toString))
+    runResult += (("compileTimeDuringQuery", compileTimeDuringQuery.toString))
+    runResult += s"date" -> date.toString
+    runResult
   }
-  }
+}

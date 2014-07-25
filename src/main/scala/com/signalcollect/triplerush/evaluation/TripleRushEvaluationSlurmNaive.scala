@@ -50,7 +50,7 @@ class TripleRushEvaluationSlurmNaive extends TorqueDeployableAlgorithm {
     val spreadsheetName = parameters(spreadsheetNameKey)
     val worksheetName = parameters(worksheetNameKey)
     val rdfTypePartitioning = parameters(rdfTypePartitioningKey).toBoolean
-    val graphBuilder = GraphBuilder.withPreallocatedNodes(nodeActors)
+    val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
     
     val tr = new TripleRush(graphBuilder, optimizerCreator = CleverOptimizerCreator)
     println("TripleRush has been started.")
@@ -93,7 +93,7 @@ class TripleRushEvaluationSlurmNaive extends TorqueDeployableAlgorithm {
         println(s"Running warmup $i/$warmupRuns")
         for (query <- queries) {
           executeEvaluationRun(query, "warmup", 0, tr, commonResults)
-          tr.awaitIdle
+          //tr.awaitIdle
         }
       }
       println(s"Finished warm-up.")

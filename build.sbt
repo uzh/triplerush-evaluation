@@ -8,7 +8,7 @@ version := "1.0-SNAPSHOT"
 
 organization := "com.signalcollect"
 
-scalaVersion := "2.11.1"
+scalaVersion := "2.11.2"
 
 scalacOptions ++= Seq("-optimize", "-Yinline-warnings", "-feature", "-deprecation")
 
@@ -25,7 +25,7 @@ resolvers +=
 
 /** Dependencies */
 libraryDependencies ++= Seq(
-  "org.scala-lang" % "scala-library" % "2.11.1"  % "compile",
+  "org.scala-lang" % "scala-library" % "2.11.2"  % "compile",
   "com.google.collections" % "google-collections" % "1.0",
   "org.apache.jena" % "apache-jena-libs" % "2.11.1" % "compile",
   "org.openrdf.sesame" % "sesame-runtime" % "2.7.11" % "compile",
