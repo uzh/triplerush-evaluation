@@ -33,8 +33,9 @@ import FileOperations.createFolder
 import FileOperations.filesIn
 import com.signalcollect.triplerush.evaluation.legacy.Evaluation
 import scala.Array.canBuildFrom
-import com.signalcollect.triplerush.TripleMapper
 import com.signalcollect.nodeprovisioning.torque.LocalHost
+import com.signalcollect.triplerush.DistributedTripleMapper
+import com.signalcollect.triplerush.EfficientIndexPattern
 
 object FileSplitter extends App {
 
@@ -57,7 +58,7 @@ object FileSplitter extends App {
     import FileOperations._
     println("Modulo is: " + mod)
     val splits = 2880
-    val mapper = new TripleMapper[Any](numberOfNodes = splits, workersPerNode = 1)
+    val mapper = new DistributedTripleMapper(numberOfNodes = splits, workersPerNode = 1)
     val parallelism = 4
     val sourceFolder = s"./$baseSourceFolderName-binary"
     val destinationFolder = sourceFolder + "-splits"
@@ -107,18 +108,14 @@ object FileSplitter extends App {
           val sId = dis.readInt
           val pId = dis.readInt
           val oId = dis.readInt
-          val pattern = TriplePattern(sId, pId, oId)
-          if (!pattern.isFullyBound) {
-            println(s"Problem: $pattern, triple #${triplesSplit + 1} in file $path is not fully bound.")
-          } else {
-            val patternSplit = mapper.getWorkerIdForVertexId(pattern)
-            if (mod == patternSplit % parallelism) {
-              val splitStream = dataOutputStreams(patternSplit)
-              splitStream.writeInt(sId)
-              splitStream.writeInt(pId)
-              splitStream.writeInt(oId)
-              triplesSplit += 1
-            }
+          val pattern = EfficientIndexPattern(sId, pId, 0)
+          val patternSplit = mapper.getWorkerIdForVertexId(pattern)
+          if (mod == patternSplit % parallelism) {
+            val splitStream = dataOutputStreams(patternSplit)
+            splitStream.writeInt(sId)
+            splitStream.writeInt(pId)
+            splitStream.writeInt(oId)
+            triplesSplit += 1
           }
         }
       } catch {

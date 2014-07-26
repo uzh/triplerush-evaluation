@@ -90,6 +90,90 @@ object LubmQueries {
   val y = -2
   val z = -3
 
+  /** begin SPAQRL quereis**/
+  def SparqlQueries: List[String] = List(
+    """
+PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?X ?Y ?Z
+WHERE {
+      ?X rdf:type ub:GraduateStudent .
+      ?X ub:undergraduateDegreeFrom ?Y .
+      ?X ub:memberOf ?Z .
+      ?Z rdf:type ub:Department .
+      ?Z ub:subOrganizationOf ?Y .
+      ?Y rdf:type ub:University .
+}""",
+    """
+PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?X ?Y
+	WHERE {
+	?X rdf:type ub:Course .
+	?X ub:name ?Y .
+}""",
+    """
+PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?X ?Y ?Z
+WHERE {
+	?X ub:undergraduateDegreeFrom ?Y .
+	?X rdf:type ub:UndergraduateStudent .
+	?X ub:memberOf ?Z .
+	?Z ub:subOrganizationOf ?Y .
+	?Z rdf:type ub:Department .
+	?Y rdf:type ub:University .
+}""",
+    """
+PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?X ?Y1 ?Y2 ?Y3
+WHERE {
+	?X ub:worksFor <http://www.Department0.University0.edu> .
+   ?X rdf:type ub:FullProfessor .
+   ?X ub:name ?Y1 .
+   ?X ub:emailAddress ?Y2 .
+   ?X ub:telephone ?Y3 .
+}""",
+    """
+PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?X
+WHERE {
+	?X ub:subOrganizationOf <http://www.Department0.University0.edu> .
+	?X rdf:type ub:ResearchGroup .
+}""",
+    """
+PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?X ?Y 
+WHERE {
+	?Y ub:subOrganizationOf <http://www.University0.edu> .
+   ?Y rdf:type ub:Department .
+   ?X ub:worksFor ?Y .
+   ?X rdf:type ub:FullProfessor .
+}""",
+    """
+PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?X ?Y ?Z
+WHERE {
+	?Y rdf:type ub:FullProfessor .
+      ?Y ub:teacherOf ?Z .
+      ?Z rdf:type ub:Course .
+      ?X ub:advisor ?Y .
+      ?X ub:takesCourse ?Z .
+      ?X rdf:type ub:UndergraduateStudent .
+}""")
+  /**end SPARQL queries**/
+
   import QueryEncoding._
 
   def fullQueries: List[Seq[TriplePattern]] = List(

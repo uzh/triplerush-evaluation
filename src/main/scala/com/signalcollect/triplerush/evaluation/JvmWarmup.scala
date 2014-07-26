@@ -116,6 +116,31 @@ WHERE {
     }
     println("Done.")
     println(s"No GC for $secondsWithoutGc seconds.")
+  }
+
+  def sleepUntilGcInactiveForXSeconds(x: Int, timeout: Int) {
+    val gcs = ManagementFactory.getGarbageCollectorMXBeans
+    val sunGcs = gcs.map(_.asInstanceOf[com.sun.management.GarbageCollectorMXBean])
+    def collectionTime = sunGcs.map(_.getCollectionTime).sum
+    def collectionDelta(oldGcTime: Long) = collectionTime - oldGcTime
+    var secondsWithoutGc = 0
+    var totalTime = 0
+    var lastGcTime = collectionTime
+    while ((secondsWithoutGc < x) && (totalTime < timeout)) {
+      Thread.sleep(1000)
+      val delta = collectionDelta(lastGcTime)
+      totalTime += 1
+      if (delta > 0) {
+        secondsWithoutGc = 0
+        lastGcTime = collectionTime
+        print("GC-")
+      } else {
+        secondsWithoutGc += 1
+        print("0-")
+      }
+    }
+    println("Done.")
+    println(s"No GC for $secondsWithoutGc seconds or timeout of $timeout seconds reached.")
 
   }
 

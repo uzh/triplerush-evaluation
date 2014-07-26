@@ -1,22 +1,3 @@
-/*
- *  @author Philip Stutz
- *
- *  Copyright 2014 University of Zurich
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- */
-
 package com.signalcollect.triplerush.evaluation
 
 import java.io.File
@@ -37,100 +18,114 @@ import com.signalcollect.triplerush.optimizers.Optimizer
 import akka.actor.ActorRef
 import com.signalcollect.triplerush.TriplePattern
 import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
+import org.openrdf.repository.sail.SailRepository
+import org.openrdf.query.QueryLanguage
+import org.openrdf.sail.memory.MemoryStore
+import com.hp.hpl.jena.rdf.model.ModelFactory
+import com.hp.hpl.jena.rdf.model.Model
+import com.hp.hpl.jena.query.QueryFactory
+import com.hp.hpl.jena.query.QueryExecutionFactory
 
-class TripleRushEvaluation extends TorqueDeployableAlgorithm {
-
-  import EvalHelpers._
+class JenaBsbmEvaluation extends TorqueDeployableAlgorithm {
+  import JenaBsbmEvalHelpers._
 
   val evaluationDescriptionKey = "evaluationDescription"
   val warmupRunsKey = "jitRepetitions"
   val datasetKey = "dataset"
   val universitiesKey = "universities"
-  val optimizerCreatorKey = "optimizerCreator"
+  //val optimizerCreatorKey = "optimizerCreator"
   val spreadsheetUsernameKey = "spreadsheetUsername"
   val spreadsheetPasswordKey = "spreadsheetPassword"
   val spreadsheetNameKey = "spreadsheetName"
   val worksheetNameKey = "worksheetName"
-  val dataSourceKey = "dataSource"
-  val rdfTypePartitioningKey = "rdfType"
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
     println(s"Received parameters $parameters")
     val evaluationDescription = parameters(evaluationDescriptionKey)
     val warmupRuns = parameters(warmupRunsKey).toInt
     val dataset = parameters(datasetKey)
-    val universities: Option[String] = parameters.get(universitiesKey)
-    val optimizerCreatorName = parameters(optimizerCreatorKey)
-    val optimizerCreator = getObject[Function1[TripleRush, Option[Optimizer]]](optimizerCreatorName)
+    val datasetSize = parameters("universities")
+
     val spreadsheetUsername = parameters(spreadsheetUsernameKey)
     val spreadsheetPassword = parameters(spreadsheetPasswordKey)
     val spreadsheetName = parameters(spreadsheetNameKey)
     val worksheetName = parameters(worksheetNameKey)
-    val dataSource = parameters(dataSourceKey)
-    val rdfTypePartitioning = parameters(rdfTypePartitioningKey).toBoolean
-    val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder)
-    println("TripleRush has been started.")
     var commonResults = parameters
-    commonResults += "numberOfNodes" -> tr.graph.numberOfNodes.toString
-    commonResults += "numberOfWorkers" -> tr.graph.numberOfWorkers.toString
+    commonResults += "numberOfNodes" -> "1"
+    commonResults += "numberOfWorkers" -> "-"
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
+    val queriesObjectName = s"com.signalcollect.triplerush.evaluation.BerlinSparqlParameterized$datasetSize"
+    val ntriplesFileLocation = s"berlinsparql_$datasetSize-nt/dataset_$datasetSize.nt"
+
+    val jena = ModelFactory.createDefaultModel
+
     val loadingTime = measureTime {
-      if (dataSource == "ntriples") {
-        loadLubmFromNTriples(universities.get.toInt, tr)
-      } else {
-        loadLubm(universities.get.toInt, tr, rdfTypePartitioning)
-      }
-      tr.prepareExecution
+      jena.read(ntriplesFileLocation, "N-TRIPLE")
     }
 
-    val optimizerInitStart = System.nanoTime
-    val optimizer = optimizerCreator(tr)
-    val optimizerInitEnd = System.nanoTime
-    val queries = if (rdfTypePartitioning){
-        LubmQueriesRdfType.fullQueries
-      } else {
-        LubmQueries.fullQueries
-      } 
+    println(s"Finished loading")
 
-    commonResults += ((s"optimizerInitialisationTime", roundToMillisecondFraction(optimizerInitEnd - optimizerInitStart).toString))
-    commonResults += ((s"optimizerName", optimizer.toString))
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
+
+    commonResults += ((s"optimizerInitialisationTime", "-"))
+    commonResults += ((s"optimizerName", "-"))
     commonResults += (("loadingTime", loadingTime.toString))
-    commonResults += s"loadNumber" -> universities.toString
-    commonResults += s"dataSet" -> s"lubm$universities"
+    commonResults += s"loadNumber" -> datasetSize.toString
+    commonResults += s"dataSet" -> s"berlinsparql $datasetSize"
 
-    println("Starting warm-up...")
+    val queriesObject = Class.forName(queriesObjectName).newInstance.asInstanceOf[BerlinSparqlQueries]
+    val queries = queriesObject.queries
 
-    for (i <- 1 to warmupRuns) {
-      println(s"Running warmup $i/$warmupRuns")
-      for (query <- queries) {
-        tr.executeAdvancedQuery(query, optimizer)
-        tr.awaitIdle
+    println(s"Queries Object: $queriesObjectName")
+    println(s"Starting warm-up... total $warmupRuns")
+
+    def warmup {
+      var subWarmUpRun = 1
+      if (warmupRuns != 0) {
+        for (i <- 1 to (warmupRuns / 20)) {
+          for ((queryId, listOfSubQueryIds) <- queriesObject.warmupQueries) {
+            val listOfQueries = queries(queryId)
+            for (subQueryId <- listOfSubQueryIds) {
+              val query = listOfQueries(subQueryId)
+              println(s"Running warmup $subWarmUpRun for query $queryId-$subQueryId.")
+              val result = executeEvaluationRun(query, s"${queryId.toString}-${subQueryId.toString}", 0, jena, commonResults)
+              subWarmUpRun += 1
+            }
+          }
+        }
       }
     }
-    println(s"Finished warm-up.")
-    JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
+
+    val warmupTime = measureTime(warmup)
+    commonResults += s"warmupTime" -> warmupTime.toString
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
-    for (queryId <- 1 to queries.size) {
-      println(s"Running evaluation for query $queryId.")
-      println(s"query: ${queries(queryId - 1)}.")
-      val result = executeEvaluationRun(queries(queryId - 1), queryId.toString, optimizer, tr, commonResults)
-      resultReporter(result)
-      println(s"Done running evaluation for query $queryId. Awaiting idle")
-      tr.awaitIdle
-      println("Idle")
-      JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
+
+    for ((queryId, listOfSubQueryIds) <- queriesObject.queriesWithResults) {
+      val listOfQueries = queries(queryId)
+      var queryRun = 1
+      for (subQueryId <- listOfSubQueryIds) {
+        if (queryRun <= 11) {
+          val query = listOfQueries(subQueryId)
+          println(s"Running evaluation for query $queryId-$subQueryId.")
+          val result = executeEvaluationRun(query, s"${queryId.toString}", queryRun, jena, commonResults)
+          resultReporter(result)
+          println(s"Done running evaluation for query $queryId-$subQueryId. Awaiting idle")
+          JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
+          println("Idle")
+          queryRun += 1
+        }
+      }
     }
-    tr.shutdown
+    jena.close
   }
 
 }
 
-object EvalHelpers {
+object JenaBsbmEvalHelpers {
 
-  def executeEvaluationRun(query: Seq[TriplePattern], queryDescription: String, optimizer: Option[Optimizer], tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
+  def executeEvaluationRun(queryString: String, queryDescription: String, queryRun: Int, jena: Model, commonResults: Map[String, String]): Map[String, String] = {
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
     val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion
@@ -147,10 +142,20 @@ object EvalHelpers {
     runResult += ((s"totalMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
     runResult += ((s"freeMemoryBefore", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
+
     val startTime = System.nanoTime
-    val (queryResultFuture, queryStatsFuture) = tr.executeAdvancedQuery(query, optimizer)
-    val queryResult = Await.result(queryResultFuture, 7200.seconds)
+    val query = QueryFactory.create(queryString)
+    val qe = QueryExecutionFactory.create(query, jena)
+    val results = qe.execSelect
+
+    var numberOfResults = 0
+    while (results.hasNext) {
+      numberOfResults += 1
+      val result = results.next
+    }
+    
     val finishTime = System.nanoTime
+
     val executionTime = roundToMillisecondFraction(finishTime - startTime)
     val gcTimeAfter = getGcCollectionTime(gcs)
     val gcCountAfter = getGcCollectionCount(gcs)
@@ -158,15 +163,11 @@ object EvalHelpers {
     val gcCountDuringQuery = gcCountAfter - gcCountBefore
     val compileTimeAfter = compilations.getTotalCompilationTime
     val compileTimeDuringQuery = compileTimeAfter - compileTimeBefore
-    val queryStats = Await.result(queryStatsFuture, 10.seconds)
-    val optimizingTime = roundToMillisecondFraction(queryStats("optimizingDuration").asInstanceOf[Long])
+
     runResult += ((s"queryId", queryDescription))
-    runResult += ((s"optimizer", optimizer.toString))
-    runResult += ((s"query", queryStats("optimizedQuery").toString))
-    runResult += ((s"exception", queryStats("exception").toString))
-    runResult += ((s"results", queryResult.size.toString))
+    runResult += ((s"queryRunId", queryRun.toString))
+    runResult += ((s"results", numberOfResults.toString))
     runResult += ((s"executionTime", executionTime.toString))
-    runResult += ((s"optimizingTime", optimizingTime.toString))
     runResult += ((s"totalMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
     runResult += ((s"freeMemory", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
@@ -184,11 +185,11 @@ object EvalHelpers {
   def loadLubm(universities: Int, triplerush: TripleRush, rdfTypePartitioning: Boolean) {
     println(s"Loading LUBM $universities ...")
     val lubmFolderName =
-      if (rdfTypePartitioning){
+      if (rdfTypePartitioning) {
         println(s"rdfTypePartitioning is true, directory is: lubm$universities-type-filtered-splits")
         s"lubm$universities-type-filtered-splits"
       } else {
-        println(s"rdfTypePartitioning is true, directory is: lubm$universities-filtered-splits")
+        println(s"rdfTypePartitioning is false, directory is: lubm$universities-filtered-splits")
         s"lubm$universities-filtered-splits"
       }
     for (splitId <- 0 until 2880) {
@@ -309,4 +310,5 @@ object EvalHelpers {
   def getGcCollectionCount(gcs: List[GarbageCollectorMXBean]): Long = {
     gcs.map(_.getCollectionCount).sum
   }
+
 }

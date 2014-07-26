@@ -24,28 +24,21 @@ import java.util.Date
 import scala.collection.JavaConversions.asScalaBuffer
 import scala.collection.mutable.PriorityQueue
 import com.signalcollect.GraphBuilder
-import com.signalcollect.deployment.TorqueDeployableAlgorithm
 import com.signalcollect.triplerush.Dictionary
 import com.signalcollect.triplerush.TripleRush
 import com.signalcollect.triplerush.optimizers.NoOptimizerCreator
 import com.signalcollect.util.IntIntHashMap
-import EvalHelpers.bytesToGigabytes
-import EvalHelpers.getGcCollectionCount
-import EvalHelpers.getGcCollectionTime
-import EvalHelpers.measureTime
-import EvalHelpers.roundToMillisecondFraction
 import akka.actor.ActorRef
 import com.signalcollect.triplerush.TriplePattern
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import com.signalcollect.triplerush.sparql.Sparql
 import com.signalcollect.triplerush.sparql.VariableEncoding
-import com.signalcollect.triplerush.HashMapDictionary
+import com.signalcollect.deployment.TorqueDeployableAlgorithm
 
-class DbpediaEvaluation extends TorqueDeployableAlgorithm {
+class DbpediaEvaluationSlurm extends TorqueDeployableAlgorithm {
 
-  val dictionary: Dictionary = new HashMapDictionary()
-  import EvalHelpers._
+  import SlurmEvalHelpers._
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
     println("TRIPLERUSH EVAL")
@@ -122,7 +115,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
 
   def transformResults(tr: TripleRush, query: Sparql, i: Iterator[Array[Int]]): (Int, Map[String, Double]) = {
     val targetId = query.variableNameToId("T")
-    val wikilinkId = dictionary("http://dbpedia.org/property/wikilink")
+    val wikilinkId = tr.dictionary("http://dbpedia.org/property/wikilink")
     val targetIndex = VariableEncoding.variableIdToDecodingIndex(targetId)
     val countsMap = new IntIntHashMap
     var numberOfResults = 0
@@ -156,7 +149,7 @@ class DbpediaEvaluation extends TorqueDeployableAlgorithm {
     }
     val topKCountsMap = topKQueue.toMap
     val topKResults = DbpediaQueries.countMapToDistribution(topKCountsMap)
-    val topKEntities = topKResults.map(entry => (dictionary.unsafeDecode(entry._1), entry._2))
+    val topKEntities = topKResults.map(entry => (tr.dictionary.unsafeDecode(entry._1), entry._2))
     (numberOfResults, topKEntities)
   }
 

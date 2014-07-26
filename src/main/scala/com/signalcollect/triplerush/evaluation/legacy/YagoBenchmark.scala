@@ -185,7 +185,7 @@
 //    }
 //
 //    var baseResults = Map[String, String]()
-//    val qe = new QueryEngine(GraphBuilder.withMessageBusFactory(
+//    val qe = new QueryEngine(new GraphBuilder[Long, Any]().MessageBusFactory(
 //      new BulkAkkaMessageBusFactory(1024, false)).
 //      withMessageSerialization(false).
 //      withAkkaMessageCompression(true))

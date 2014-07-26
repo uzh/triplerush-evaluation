@@ -79,3 +79,9 @@ deployment.slurm.config.p-naive-bsbm
 deployment.slurm.config.p-naive-lubm
 
 deployment.slurm.config.sesame-lubm
+
+deployment.slurm.config.sesame-bsbm
+
+deployment.slurm.config.jena-bsbm
+
+deployment.slurm.config.jena-bsbm
