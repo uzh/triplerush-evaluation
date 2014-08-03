@@ -4,6 +4,7 @@ import scala.util.Random
 import com.signalcollect.triplerush.util.MemoryEfficientSplayIntSet
 import java.util.function.Consumer
 import com.signalcollect.util.SplayIntSet
+import com.signalcollect.util.IntHashSet
 
 final class SplayIntSet10PNF0DOT0 extends SplayIntSet {
   def overheadFraction = 0.0f
@@ -14,7 +15,6 @@ final class SplayIntSet50PNF0DOT1 extends SplayIntSet {
   def overheadFraction = 0.1f
   def maxNodeIntSetSize = 50
 }
-
 
 object SplayIntSetBenchmark extends App {
 
@@ -33,12 +33,12 @@ object SplayIntSetBenchmark extends App {
   //  }
   //  println(" Done.")
 
-  val bestTime = (1 to runs).map(x => splayInsertBenchmark).min
-//  val bestTime = (1 to runs).map(x => javaIntSetInsertBenchmark).min
+  val bestTime = (1 to runs).map(x => intHashSetInsertBenchmark).min
+  //  val bestTime = (1 to runs).map(x => javaIntSetInsertBenchmark).min
   //val bestTime = (1 to runs).map(x => splayTraverseAllBenchmark).min
   //val bestTime = (1 to runs).map(x => javaIntSetTraverseAllBenchmark).min
   //val bestTime = (1 to runs).map(x => splayContainsBenchmark).min
-//  val bestTime = (1 to runs).map(x => splayInsertBenchmark).min
+  //  val bestTime = (1 to runs).map(x => splayInsertBenchmark).min
 
   println(s"Best time: $bestTime milliseconds")
 
@@ -49,6 +49,27 @@ object SplayIntSetBenchmark extends App {
     val r = new Random(0)
     while (i < maxSize) {
       splayIntSet.insert(r.nextInt(randomRange))
+      i += 1
+      if (i % 1000000 == 0) {
+        val timeSoFar = ((System.nanoTime - startTime) / 1e5).round / 10.0
+        println(s"$i ints loaded in $timeSoFar milliseconds.")
+      }
+    }
+    val finishTime = System.nanoTime
+    val totalTimeInMs = ((finishTime - startTime) / 1e5).round / 10.0
+    totalTimeInMs
+  }
+
+  def intHashSetInsertBenchmark: Double = {
+    val startTime = System.nanoTime
+    val intHashSet = new IntHashSet()
+    var i = 0
+    val r = new Random(0)
+    while (i < maxSize) {
+      val nextInt = r.nextInt(randomRange)
+      if (nextInt != 0) {
+        intHashSet.add(nextInt)
+      }
       i += 1
       if (i % 1000000 == 0) {
         val timeSoFar = ((System.nanoTime - startTime) / 1e5).round / 10.0
