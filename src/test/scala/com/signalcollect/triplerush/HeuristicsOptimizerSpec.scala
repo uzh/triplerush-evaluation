@@ -16,6 +16,7 @@ import com.signalcollect.triplerush.optimizers.CleverCardinalityOptimizer
 import com.signalcollect.triplerush.optimizers.ExplorationOptimizer
 import com.signalcollect.triplerush.optimizers.ExplorationHeuristicsOptimizer
 import com.signalcollect.triplerush.optimizers.HeuristicOptimizerCreator
+import com.signalcollect.triplerush.EfficientIndexPattern
 
 class HeuristicsOptimizerSpec extends FlatSpec with Matchers {
   /*
@@ -130,7 +131,7 @@ class HeuristicsOptimizerSpec extends FlatSpec with Matchers {
       tr.awaitIdle
       tr.prepareExecution
 
-      tr.childIdsForPattern(TriplePattern(0, 0, 0)).foreach {
+      tr.childIdsForPattern(EfficientIndexPattern(0, 0, 0)).foreach {
         encoded =>
           print(s"$encoded -> ${tr.dictionary.decode(encoded)}")
       }
