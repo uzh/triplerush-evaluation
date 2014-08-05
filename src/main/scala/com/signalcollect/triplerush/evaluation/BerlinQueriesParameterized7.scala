@@ -1,7 +1,32 @@
 package com.signalcollect.triplerush.evaluation
 
 object BerlinQueriesParameterized7 {
- val queries = Map(1 -> List("""
+
+  def warmupQueries = Map(
+    10 -> List(1, 2),
+    11 -> List(1, 2),
+    1 -> List(1, 4),
+    2 -> List(1, 2),
+    3 -> List(1, 2),
+    4 -> List(1, 2),
+    5 -> List(1, 2),
+    6 -> List(1, 2),
+    7 -> List(1, 2),
+    8 -> List(1, 2))
+
+  def queriesWithResults = Map(
+    10 -> List(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25),
+    11 -> List(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49),
+    1 -> List(6, 10, 11, 16, 17, 20, 21, 24, 26, 27, 28, 30, 31, 34, 36, 38, 46, 47, 48),
+    2 -> List(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49),
+    3 -> List(7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19, 20, 21, 24, 25, 26, 27, 28, 29, 30, 31, 32, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 48),
+    4 -> List(3, 4, 6, 7, 8, 9, 14, 16, 18, 19, 20, 21, 24, 30, 38, 40, 41, 43, 44, 45, 47, 48),
+    5 -> List(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49),
+    6 -> List(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49),
+    7 -> List(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49),
+    8 -> List(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49))
+
+  val queries = Map(1 -> List("""
 PREFIX bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
 PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -801,8 +826,8 @@ WHERE {
 	}
 ORDER BY ?label
 LIMIT 10
-"""), 
-2 -> List("""
+"""),
+    2 -> List("""
 PREFIX bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
 PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -1902,8 +1927,8 @@ WHERE {
     <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/Product7> bsbm:productPropertyNumeric1 ?propertyNumeric1 .
     <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/Product7> bsbm:productPropertyNumeric2 ?propertyNumeric2 .
 }
-"""), 
-3 -> List("""
+"""),
+    3 -> List("""
 PREFIX bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
 PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -2753,7 +2778,7 @@ WHERE {
 ORDER BY ?label
 LIMIT 10
 """),
-4 -> List("""
+    4 -> List("""
 PREFIX bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
 PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -4054,7 +4079,7 @@ WHERE {
 ORDER BY ?label
 LIMIT 10
 """),
-5 -> List("""
+    5 -> List("""
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
@@ -4905,7 +4930,7 @@ WHERE {
 ORDER BY ?productLabel
 LIMIT 5
 """),
-6 -> List("""
+    6 -> List("""
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
@@ -5455,8 +5480,8 @@ WHERE {
     ?product rdf:type bsbm:Product .
 }
 
-"""), 
-7 -> List("""
+"""),
+    7 -> List("""
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX rev: <http://purl.org/stuff/rev#>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
@@ -6006,8 +6031,8 @@ SELECT ?productLabel
 WHERE { 
 	<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/Product7> rdfs:label ?productLabel .
 }
-"""), 
-8 -> List("""
+"""),
+    8 -> List("""
 PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
 PREFIX dc: <http://purl.org/dc/elements/1.1/>
 PREFIX rev: <http://purl.org/stuff/rev#>
@@ -6758,7 +6783,7 @@ WHERE {
 	?reviewer foaf:name ?reviewerName .
 }
 """),
-10 -> List("""
+    10 -> List("""
 PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> 
 PREFIX dc: <http://purl.org/dc/elements/1.1/>
@@ -7508,9 +7533,9 @@ WHERE {
 	?offer bsbm:price ?price .
     ?offer bsbm:validTo ?date .
 }
-"""), 
-11 -> 
-List("""
+"""),
+    11 ->
+      List("""
 SELECT ?property ?hasValue ?isValueOf
 WHERE {
   { <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer135> ?property ?hasValue }

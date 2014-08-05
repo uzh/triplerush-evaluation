@@ -17,8 +17,7 @@ import com.signalcollect.triplerush.optimizers.ExplorationOptimizer
 import com.signalcollect.triplerush.optimizers.ExplorationHeuristicsOptimizer
 import com.signalcollect.triplerush.optimizers.HeuristicOptimizerCreator
 
-class BSBMSpec extends FlatSpec with Matchers {
-
+class HeuristicsOptimizerSpec extends FlatSpec with Matchers {
   /*
   "Parser" should "successfully parse BSBM query" in {
     val tr = new TripleRush
@@ -48,7 +47,6 @@ class BSBMSpec extends FlatSpec with Matchers {
     }
   }
 
-  /*
   "Parser" should "successfully parse another BSBM query" in {
     val tr = new TripleRush
     try {
@@ -64,7 +62,7 @@ class BSBMSpec extends FlatSpec with Matchers {
     } finally {
       tr.shutdown
     }
-  }*/
+  }
 
   "Parser" should "properly decode results" in {
     val tr = new TripleRush
@@ -114,9 +112,9 @@ class BSBMSpec extends FlatSpec with Matchers {
     } finally {
       tr.shutdown
     }
-  }
-*/
-  it should "use heuristics to optimize queries" in {
+  }*/
+
+  "Optimizer" should "execute queries reasonably faster than other optimizers" in {
     def roundToMillisecondFraction(nanoseconds: Long): Double = {
       ((nanoseconds / 100000.0).round) / 10.0
     }
@@ -132,10 +130,11 @@ class BSBMSpec extends FlatSpec with Matchers {
       tr.awaitIdle
       tr.prepareExecution
 
-      /*tr.childIdsForPattern(TriplePattern(0, 0, 0)).foreach{
-        encoded => 
-        print(s"$encoded -> ${tr.dictionary.decode(encoded)}")
-      }*/
+      tr.childIdsForPattern(TriplePattern(0, 0, 0)).foreach {
+        encoded =>
+          print(s"$encoded -> ${tr.dictionary.decode(encoded)}")
+      }
+      println()
       
       val clever = CleverCardinalityOptimizer
       val stats = new PredicateSelectivity(tr)
@@ -143,15 +142,38 @@ class BSBMSpec extends FlatSpec with Matchers {
       val withoutHeuristic = new ExplorationOptimizer(stats, useHeuristic = false)
       val heuristicOptimizer = new ExplorationHeuristicsOptimizer(stats)
 
-      for (i <- 1 to 10) {
-        /*println("Clever Optimizer")
-        executionTimeCleverOptimizer = math.min(executionTimeCleverOptimizer, executeQuery(tr, clever))
-        println("Without Heuristics")
-        executionTimeWithoutHeuristic = math.min(executionTimeWithoutHeuristic, executeQuery(tr, withoutHeuristic))
-        println("With Heuristics")
-        executionTimeWithHeuristic = math.min(executionTimeWithHeuristic, executeQuery(tr, withHeuristic))
-        println("With new Heuristics Optimizer")*/
-        executionTimeWithNewHeuristic = math.min(executionTimeWithNewHeuristic, executeQuery(tr, heuristicOptimizer))
+      for ((queryId, listOfSubQueryIds) <- BerlinQueriesParameterized7.queriesWithResults) {
+        if (queryId != 2) {
+          val queries = BerlinQueriesParameterized7.queries
+          val listOfQueries = queries(queryId)
+          var queryRun = 1
+          for (subQueryId <- listOfSubQueryIds) {
+            if (queryRun <= 5) {
+              val queryString = listOfQueries(subQueryId)
+
+              for (i <- 1 to 10) {
+                //println("Clever Optimizer")
+                executionTimeCleverOptimizer = math.min(executionTimeCleverOptimizer, executeQuery(queryString, tr, clever))
+                //println("Without Heuristics")
+                executionTimeWithoutHeuristic = math.min(executionTimeWithoutHeuristic, executeQuery(queryString, tr, withoutHeuristic))
+                //println("With Heuristics")
+                executionTimeWithHeuristic = math.min(executionTimeWithHeuristic, executeQuery(queryString, tr, withHeuristic))
+                //println("With new Heuristics Optimizer")
+                executionTimeWithNewHeuristic = math.min(executionTimeWithNewHeuristic, executeQuery(queryString, tr, heuristicOptimizer))
+              }
+              queryRun += 1
+              println(s"Query $queryId-$subQueryId: 0) $executionTimeWithNewHeuristic, i) $executionTimeWithHeuristic, ii) $executionTimeWithoutHeuristic, iii) $executionTimeCleverOptimizer,  iv) diff: ${executionTimeWithNewHeuristic - executionTimeCleverOptimizer}")
+              assert(executionTimeWithNewHeuristic/executionTimeWithHeuristic < 2)
+              assert(executionTimeWithNewHeuristic/executionTimeWithoutHeuristic < 2)
+
+              executionTimeWithNewHeuristic = Double.MaxValue
+              executionTimeWithHeuristic = Double.MaxValue
+              executionTimeWithoutHeuristic = Double.MaxValue
+              executionTimeCleverOptimizer = Double.MaxValue
+
+            }
+          }
+        }
       }
     } finally {
       tr.shutdown
@@ -159,8 +181,8 @@ class BSBMSpec extends FlatSpec with Matchers {
 
     //println(s"Execution time: 0) with new heuristic: $executionTimeWithNewHeuristic, i) with Heuristic: $executionTimeWithHeuristic, ii) without Heuristic: $executionTimeWithoutHeuristic, iii) Clever: $executionTimeCleverOptimizer,  iv) difference heuristic: ${executionTimeWithHeuristic - executionTimeWithoutHeuristic}, v) difference clever: ${executionTimeWithoutHeuristic - executionTimeCleverOptimizer}")
 
-    def executeQuery(tr: TripleRush, optimizer: Optimizer): Double = {
-      val queryString = BerlinQueriesParameterized7.queries(2)(1)
+    def executeQuery(queryString: String, tr: TripleRush, optimizer: Optimizer): Double = {
+
       var numberOfResults = 0
       var stringLength = 0
       val startTime = System.nanoTime
@@ -186,6 +208,3 @@ class BSBMSpec extends FlatSpec with Matchers {
   }
 
 }
-
-// Map(property -> http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/validTo, hasValue -> 2008-05-30T00:00:00, isValueOf -> *), Map(property -> http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/price, hasValue -> 7792.07, isValueOf -> *), Map(property -> http://purl.org/dc/elements/1.1/date, hasValue -> 2008-03-18, isValueOf -> *))
-// Map(property -> http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/price, hasValue -> com.hp.hpl.jena.datatypes.BaseDatatype$TypedValue@bc622438, isValueOf -> *), Map(property -> http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/validTo, hasValue -> 2008-05-30T00:00:00, isValueOf -> *), Map(property -> http://purl.org/dc/elements/1.1/date, hasValue -> 2008-03-18, isValueOf -> *))
