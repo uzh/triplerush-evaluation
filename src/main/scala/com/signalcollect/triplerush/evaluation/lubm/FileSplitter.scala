@@ -34,7 +34,7 @@ import FileOperations.filesIn
 import com.signalcollect.triplerush.evaluation.legacy.Evaluation
 import scala.Array.canBuildFrom
 import com.signalcollect.nodeprovisioning.torque.LocalHost
-import com.signalcollect.triplerush.DistributedTripleMapper
+import com.signalcollect.triplerush.TripleMapper
 import com.signalcollect.triplerush.EfficientIndexPattern
 
 object FileSplitter extends App {
@@ -58,7 +58,7 @@ object FileSplitter extends App {
     import FileOperations._
     println("Modulo is: " + mod)
     val splits = 2880
-    val mapper = new DistributedTripleMapper(numberOfNodes = splits, workersPerNode = 1)
+    val mapper = new TripleMapper(numberOfNodes = splits, workersPerNode = 1)
     val parallelism = 4
     val sourceFolder = s"./$baseSourceFolderName-binary"
     val destinationFolder = sourceFolder + "-splits"
