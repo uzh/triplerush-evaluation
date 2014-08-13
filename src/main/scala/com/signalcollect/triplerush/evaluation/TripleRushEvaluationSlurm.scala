@@ -18,6 +18,7 @@ import com.signalcollect.triplerush.optimizers.Optimizer
 import akka.actor.ActorRef
 import com.signalcollect.triplerush.TriplePattern
 import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
+import com.signalcollect.triplerush.optimizers.HeuristicOptimizerCreator
 
 class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
   import SlurmEvalHelpers._
@@ -25,12 +26,12 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
   /**
    * For TR evaluation without counting result length
    */
-  
+
   val evaluationDescriptionKey = "evaluationDescription"
   val warmupRunsKey = "jitRepetitions"
   val datasetKey = "dataset"
   val universitiesKey = "universities"
-  //val optimizerCreatorKey = "optimizerCreator"
+  val optimizerCreatorKey = "optimizerCreator"
   val spreadsheetUsernameKey = "spreadsheetUsername"
   val spreadsheetPasswordKey = "spreadsheetPassword"
   val spreadsheetNameKey = "spreadsheetName"
@@ -43,15 +44,15 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     val warmupRuns = parameters(warmupRunsKey).toInt
     val dataset = parameters(datasetKey)
     val universities: Option[String] = parameters.get(universitiesKey)
-   //val optimizerCreatorName = parameters(optimizerCreatorKey)
-    //val optimizerCreator = getObject[Function1[TripleRush, Option[Optimizer]]](optimizerCreatorName)
+    val optimizerCreatorName = parameters(optimizerCreatorKey)
+    val optimizerCreator = getObject[Function1[TripleRush, Option[Optimizer]]](optimizerCreatorName)
     val spreadsheetUsername = parameters(spreadsheetUsernameKey)
     val spreadsheetPassword = parameters(spreadsheetPasswordKey)
     val spreadsheetName = parameters(spreadsheetNameKey)
     val worksheetName = parameters(worksheetNameKey)
     val rdfTypePartitioning = parameters(rdfTypePartitioningKey).toBoolean
     val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder)
+    val tr = new TripleRush(graphBuilder, optimizerCreator = optimizerCreator)
     println("TripleRush has been started.")
     var commonResults = parameters
     commonResults += "numberOfNodes" -> tr.graph.numberOfNodes.toString
@@ -78,9 +79,9 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     } else {
       LubmQueries.fullQueries
     }
-
+    
     commonResults += ((s"optimizerInitialisationTime", optimizerInitialisationTime.toString))
-    commonResults += ((s"optimizerName", "ExplorationOptimizer"))
+    commonResults += ((s"optimizerName", optimizerCreator.toString()))
     commonResults += (("loadingTime", loadingTime.toString))
     commonResults += s"loadNumber" -> universities.toString
     commonResults += s"dataSet" -> s"lubm$universities"
@@ -98,7 +99,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
       println(s"Finished warm-up.")
       JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
     }
-    
+
     val warmupTime = measureTime(warmup)
     commonResults += s"warmupTime" -> warmupTime.toString
 
@@ -120,7 +121,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     tr.shutdown
   }
 
-    def executeEvaluationRun(query: Seq[TriplePattern], queryDescription: String, queryRun: Int, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
+  def executeEvaluationRun(query: Seq[TriplePattern], queryDescription: String, queryRun: Int, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
     val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion

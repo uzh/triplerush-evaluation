@@ -50,7 +50,7 @@ class TripleRushEvaluationISWCSlurm extends TorqueDeployableAlgorithm {
     val dataSource = parameters(dataSourceKey)
     val rdfTypePartitioning = parameters(rdfTypePartitioningKey).toBoolean
     val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder)
+    val tr = new TripleRush(graphBuilder, optimizerCreator)
     println("TripleRush has been started.")
     var commonResults = parameters
     commonResults += "numberOfNodes" -> tr.graph.numberOfNodes.toString

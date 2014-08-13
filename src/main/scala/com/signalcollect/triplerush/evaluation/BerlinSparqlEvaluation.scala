@@ -39,7 +39,7 @@ class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
     val warmupRuns = parameters("jitRepetitions").toInt
 
     val graphBuilder = new GraphBuilder[Long, Any].withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder)
+    val tr = new TripleRush(graphBuilder, optimizerCreator = optimizerCreator)
     println("TripleRush has been started.")
 
     var commonResults = parameters
@@ -67,7 +67,7 @@ class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
 
     commonResults += ((s"optimizerInitialisationTime", optimizerInitialisationTime.toString))
-    commonResults += ((s"optimizerName", "ExplorationOptimizer"))
+    commonResults += ((s"optimizerName", optimizerCreator.toString()))
     commonResults += (("loadingTime", loadingTime.toString))
     commonResults += s"loadNumber" -> datasetSize.toString
     commonResults += s"dataSet" -> s"berlinsparql $datasetSize"
