@@ -70,7 +70,8 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
 
     println("TripleRush has been started.")
 
-    dictionary.loadFromFile("dbpedia-binary-old/dictionary.txt")
+    //TODO: temporarily commented out, fix later
+    //dictionary.loadFromFile("dbpedia-binary-old/dictionary.txt")
 
     println("finished loading dictionary.")
 
