@@ -41,11 +41,12 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
     val optimizerCreator = getObject[Function1[TripleRush, Option[Optimizer]]](optimizerCreatorName)
     val warmupRuns = parameters("jitRepetitions").toInt
 
-    val numberOfWorkers = parameters("numWorkers").toInt
-
-    val graphBuilder = new GraphBuilder[Long, Any].withNodeProvisioner(new LocalNodeProvisioner[Long, Any](fixedNumberOfWorkers = Some(numberOfWorkers)))
-
+    //val graphBuilder = new GraphBuilder[Long, Any].withNodeProvisioner(new LocalNodeProvisioner[Long, Any](fixedNumberOfWorkers = Some(numberOfWorkers)))
+    //val tr = new TripleRush(graphBuilder, optimizerCreator = optimizerCreator)
+    
+    val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
     val tr = new TripleRush(graphBuilder, optimizerCreator = optimizerCreator)
+    
     println("TripleRush has been started.")
 
     var commonResults = parameters
@@ -57,13 +58,11 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
     commonResults += s"loadNumber" -> datasetSize.toString
     commonResults += s"dataSet" -> s"LUBM $datasetSize"
 
-    commonResults += s"workers" -> numberOfWorkers.toString()
+    val totalWorkers = tr.graph.getWorkerStatistics.length
+    commonResults += s"totalWorkers" -> totalWorkers.toString()
 
     val lubmQueries = LubmQueries.SparqlQueries
     val lubmNtriplesFileLocation = s"lubm$datasetSize-nt"
-
-    val bsbmQueriesObjectName = s"com.signalcollect.triplerush.evaluation.BerlinSparqlParameterized100"
-    val bsbmNtriplesFileLocation = s"berlinsparql_100-nt/dataset_100.nt"
 
     def loadLubmFromNt(datasetSize: Int) {
       val folderName = s"lubm$datasetSize-nt"
@@ -79,7 +78,6 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
     }
 
     val loadingTime = measureTime {
-      tr.loadNtriples(bsbmNtriplesFileLocation, Some(0))
       loadLubmFromNt(datasetSize.toInt)
       tr.awaitIdle
     }
