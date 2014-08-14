@@ -89,3 +89,5 @@ deployment.slurm.config.jena-bsbm
 sc-clmnjq-1.sh
 
 *.sh
+
+deployment.slurm.config.lubm-firstresult
