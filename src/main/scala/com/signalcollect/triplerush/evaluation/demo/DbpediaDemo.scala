@@ -63,8 +63,9 @@ class DbpediaDemo extends TorqueDeployableAlgorithm {
     println(s"Received parameters $parameters")
 
     //loading form filtered splits
+    val dictionary = new HashMapDictionary()
     val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder, optimizerCreator = ExplorationOptimizerCreator)
+    val tr = new TripleRush(graphBuilder, dictionary = dictionary, optimizerCreator = ExplorationOptimizerCreator)
     //val tr = new TripleRush(graphBuilder, optimizerCreator = NoOptimizerCreator)
 
     println("TripleRush has been started.")
