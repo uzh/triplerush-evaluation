@@ -19,6 +19,9 @@ import akka.actor.ActorRef
 import com.signalcollect.triplerush.TriplePattern
 import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
 import com.signalcollect.triplerush.optimizers.HeuristicOptimizerCreator
+import com.signalcollect.triplerush.optimizers.NoOptimizerCreator
+import com.signalcollect.triplerush.optimizers.ExplorationHeuristicsOptimizer
+import com.signalcollect.triplerush.optimizers.ExplorationOptimizerCreator
 
 class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
   import SlurmEvalHelpers._
@@ -52,7 +55,8 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     val worksheetName = parameters(worksheetNameKey)
     val rdfTypePartitioning = parameters(rdfTypePartitioningKey).toBoolean
     val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder, optimizerCreator = optimizerCreator)
+    val tr = new TripleRush(graphBuilder, optimizerCreator = HeuristicOptimizerCreator)
+    //val tr = new TripleRush(graphBuilder)
     println("TripleRush has been started.")
     var commonResults = parameters
     commonResults += "numberOfNodes" -> tr.graph.numberOfNodes.toString
@@ -69,7 +73,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     val optimizerInitialisationTime = measureTime {
       tr.prepareExecution
     }
-
+    //val nameOfOptimizer = optimizerCreator(tr)
     println(s"Finished optimizer initialization")
 
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
@@ -81,7 +85,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     }
     
     commonResults += ((s"optimizerInitialisationTime", optimizerInitialisationTime.toString))
-    commonResults += ((s"optimizerName", optimizerCreator.toString()))
+    commonResults += ((s"optimizerName", "HeuristicsOptimizerCreator"))
     commonResults += (("loadingTime", loadingTime.toString))
     commonResults += s"loadNumber" -> universities.toString
     commonResults += s"dataSet" -> s"lubm$universities"
@@ -138,6 +142,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     runResult += ((s"totalMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
     runResult += ((s"freeMemoryBefore", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
+        
     val startTime = System.nanoTime
 
     val result = tr.resultIteratorForQuery(query)
@@ -159,6 +164,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     runResult += ((s"queryId", queryDescription))
     runResult += ((s"queryRunId", queryRun.toString))
     runResult += ((s"results", numberOfResults.toString))
+    runResult += ((s"query", query.mkString(", ")))
     runResult += ((s"executionTime", executionTime.toString))
     runResult += ((s"totalMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
     runResult += ((s"freeMemory", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
@@ -179,6 +185,9 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
 object SlurmEvalHelpers {
 
   def loadLubm(universities: Int, triplerush: TripleRush, rdfTypePartitioning: Boolean) {
+    
+    val numberOfWorkers = triplerush.graph.numberOfWorkers
+    
     println(s"Loading LUBM $universities ...")
     val lubmFolderName =
       if (rdfTypePartitioning) {
@@ -191,7 +200,8 @@ object SlurmEvalHelpers {
     for (splitId <- 0 until 2880) {
       val splitFile = s"./$lubmFolderName/$splitId.filtered-split"
       triplerush.loadBinary(splitFile, Some(splitId))
-      if (splitId % 288 == 279) {
+      //if (splitId % 288 == 279) {
+      if (splitId % numberOfWorkers == 0) {
         println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
         triplerush.awaitIdle
         println(s"Continuing graph loading...")
