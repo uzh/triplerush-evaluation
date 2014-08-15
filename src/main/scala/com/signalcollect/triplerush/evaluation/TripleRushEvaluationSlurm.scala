@@ -197,7 +197,7 @@ object SlurmEvalHelpers {
         println(s"rdfTypePartitioning is false, directory is: lubm$universities-filtered-splits")
         s"lubm$universities-filtered-splits"
       }
-    for (splitId <- 0 until 2880) {
+    for (splitId <- 0l until 2880l) {
       val splitFile = s"./$lubmFolderName/$splitId.filtered-split"
       triplerush.loadBinary(splitFile, Some(splitId))
       //if (splitId % 288 == 279) {
