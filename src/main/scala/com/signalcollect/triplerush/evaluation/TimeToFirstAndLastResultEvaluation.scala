@@ -96,14 +96,14 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
     commonResults += ((s"optimizerInitialisationTime", optimizerInitialisationTime.toString))
     commonResults += (("loadingTime", loadingTime.toString))
 
-    def warmupForXMs(query: Sparql, patterns: Seq[TriplePattern], selectVariables: Int, timeOut: Int) {
+    def warmupForXMs(patterns: Seq[TriplePattern], selectVariables: Int, timeOut: Int) {
       val warmUpStartTime = System.nanoTime()
-      var secondsElapsed = 0l
+      var secondsElapsed = 0d
       while (secondsElapsed < timeOut) {
         println(s"Running warmup. Query: ${patterns.mkString(", ")}")
-        val result = executeEvaluationRun(query, patterns, selectVariables, 0, "0", 0, tr, optimizer, commonResults)
+        val result = executeEvaluationRun(patterns, selectVariables, 0, "0", 0, tr, optimizer, commonResults)
         val timeAfterWarmup = System.nanoTime()
-        secondsElapsed = timeAfterWarmup - warmUpStartTime
+        secondsElapsed = roundToMillisecondFraction(timeAfterWarmup - warmUpStartTime)
       }
       tr.awaitIdle
       JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
@@ -125,7 +125,7 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
 
         val optimizedQuery = tr.getQueryPlan(firstPatternSequence, Some(optimizer))
         val optimizedQueryPlan = optimizedQuery.queryPlan
-        warmupForXMs(query, optimizedQueryPlan, selectVariables, 3000)
+        warmupForXMs(optimizedQueryPlan, selectVariables, 30000)
         println(s"Finished warm-up for query id $queryId. query: ${firstPatternSequence.mkString(", ")}")
 
         val totalPlanningDuration = roundToMillisecondFraction(optimizedQuery.totalPlanningDuration)
@@ -140,7 +140,7 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
           for (patternsSlice <- 0 to (optimizedQueryPlan.size - 1)) {
             val querySliceToExecute = optimizedQueryPlan.slice(0, patternsSlice + 1)
             val selectVarStrings = query.selectVariableIds.toArray.map(id => query.idToVariableName((-id) - 1))
-            val result = executeEvaluationRun(query, querySliceToExecute, selectVariables, queryRun, queryId.toString, (patternsSlice + 1), tr, optimizer, commonResults)
+            val result = executeEvaluationRun(querySliceToExecute, selectVariables, queryRun, queryId.toString, (patternsSlice + 1), tr, optimizer, commonResults)
             println(s"Done running evaluation for query $queryId-$queryRun, slice: ${querySliceToExecute.mkString(", ")}. Awaiting idle")
             resultReporter(result)
             tr.awaitIdle
@@ -155,22 +155,7 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
     tr.shutdown
   }
 
-  def lookupVariableBinding(tr: TripleRush, query: Sparql, encodedResult: Array[Int])(variableName: String): String = {
-    val id = query.variableNameToId(variableName)
-    val index = VariableEncoding.variableIdToDecodingIndex(id)
-    val encodedBinding = encodedResult(index)
-    tr.dictionary.unsafeDecode(encodedBinding)
-  }
-
-  class DecodingIterator(tr: TripleRush, query: Sparql, encodedIterator: Iterator[Array[Int]]) extends Iterator[String => String] {
-    def next: String => String = {
-      val nextEncoded = encodedIterator.next
-      lookupVariableBinding(tr: TripleRush, query, nextEncoded)
-    }
-    def hasNext = encodedIterator.hasNext
-  }
-
-  def executeEvaluationRun(sparqlQuery: Sparql, query: Seq[TriplePattern], selectVariables: Int, queryRun: Int, queryDescription: String, slice: Int, tr: TripleRush, optimizer: Optimizer, commonResults: Map[String, String]): Map[String, String] = {
+  def executeEvaluationRun(query: Seq[TriplePattern], selectVariables: Int, queryRun: Int, queryDescription: String, slice: Int, tr: TripleRush, optimizer: Optimizer, commonResults: Map[String, String]): Map[String, String] = {
     val gcs = ManagementFactory.getGarbageCollectorMXBeans.toList
     val compilations = ManagementFactory.getCompilationMXBean
     val javaVersion = ManagementFactory.getRuntimeMXBean.getVmVersion
@@ -194,20 +179,12 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
 
     var timeForFirstResult = 0l
     var numberOfResults = 0
-    var stringLength = 0
 
     val startTime = System.nanoTime
-    val selectVarStrings = sparqlQuery.selectVariableIds.toArray.map(id => sparqlQuery.idToVariableName((-id) - 1))
-    val iterator = tr.resultIteratorForQuery(query, Some(optimizer), Some(selectVariables))
-    val resultIterator = new DecodingIterator(tr, sparqlQuery, iterator)
+    val resultIterator = tr.resultIteratorForQuery(query, Some(optimizer), Some(selectVariables))
 
     while (resultIterator.hasNext) {
-      val res = resultIterator.next
-      var arrayIndex = 0
-      while (arrayIndex < selectVarStrings.length) {
-        stringLength += res(selectVarStrings(arrayIndex)).length
-        arrayIndex += 1
-      }
+      resultIterator.next
       if (numberOfResults == 0) {
         timeForFirstResult = System.nanoTime()
       }
@@ -230,7 +207,6 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
     runResult += ((s"queryId", queryDescription))
     runResult += ((s"queryRunId", queryRun.toString))
     runResult += ((s"results", numberOfResults.toString))
-    runResult += ((s"resultLength", stringLength.toString))
     runResult += ((s"query", query.mkString(", ")))
     runResult += ((s"executionTime", executionTime.toString))
     runResult += ((s"totalMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
