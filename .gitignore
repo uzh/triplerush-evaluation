@@ -91,3 +91,5 @@ sc-clmnjq-1.sh
 *.sh
 
 deployment.slurm.config.lubm-firstresult
+
+deployment.slurm.config.lubm-parallelism
