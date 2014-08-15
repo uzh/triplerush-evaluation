@@ -84,29 +84,32 @@ class SesameBsbmEvaluation extends TorqueDeployableAlgorithm {
     println(s"Queries Object: $queriesObjectName")
     println(s"Starting warm-up... total $warmupRuns")
 
-    def warmup {
-      var subWarmUpRun = 1
-      if (warmupRuns != 0) {
-        for (i <- 1 to (warmupRuns / 20)) {
-          for ((queryId, listOfSubQueryIds) <- queriesObject.warmupQueries) {
-            val listOfQueries = queries(queryId)
-            for (subQueryId <- listOfSubQueryIds) {
-              val query = listOfQueries(subQueryId)
-              println(s"Running warmup $subWarmUpRun for query $queryId-$subQueryId.")
-              val result = executeEvaluationRun(query, s"${queryId.toString}-${subQueryId.toString}", 0, sesame, commonResults)
-              subWarmUpRun += 1
-            }
-          }
-        }
+    def warmupForXMs(query: String, timeOut: Int) {
+      val warmUpStartTime = System.nanoTime()
+      var secondsElapsed = 0d
+      while (secondsElapsed < timeOut) {
+        println(s"Running warmup.")
+        val result = executeEvaluationRun(query, "0", 0, sesame, commonResults)
+        val timeAfterWarmup = System.nanoTime()
+        secondsElapsed = roundToMillisecondFraction(timeAfterWarmup - warmUpStartTime)
       }
     }
 
-    val warmupTime = measureTime(warmup)
-    commonResults += s"warmupTime" -> warmupTime.toString
+    //val warmupTime = measureTime(warmup)
+    commonResults += s"warmupTime" -> "-"
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
-    
+
     for ((queryId, listOfSubQueryIds) <- queriesObject.queriesWithResults) {
+
+        val listOfWarmupSubQueryIds = queriesObject.warmupQueries.keys
+        val listOfWarmupQueries = queries(queryId)
+        for (warmUpSubQueryId <- listOfWarmupSubQueryIds) {
+          val warmupQuery = listOfWarmupQueries(warmUpSubQueryId)
+          println(s"Running warmup for query $queryId-$warmUpSubQueryId.")
+          warmupForXMs(warmupQuery, 15000)
+        }
+
       val listOfQueries = queries(queryId)
       var queryRun = 1
       for (subQueryId <- listOfSubQueryIds) {
@@ -147,7 +150,7 @@ object SesameBsbmEvalHelpers {
     runResult += ((s"freeMemoryBefore", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
     val connection = sesame.getConnection
-    
+
     val startTime = System.nanoTime
     val tupleQuery = connection.prepareTupleQuery(QueryLanguage.SPARQL, queryString)
     val results = tupleQuery.evaluate
