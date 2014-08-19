@@ -39,7 +39,7 @@ class BerlinSparqlEvaluationParallel extends TorqueDeployableAlgorithm {
     val warmupRuns = parameters("jitRepetitions").toInt
 
     val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder)
+    val tr = new TripleRush(graphBuilder, optimizerCreator = optimizerCreator)
     println("TripleRush has been started.")
 
     var commonResults = parameters
@@ -76,37 +76,37 @@ class BerlinSparqlEvaluationParallel extends TorqueDeployableAlgorithm {
     val queries = queriesObject.queries
 
     println(s"Queries Object: $queriesObjectName")
-    println(s"Starting warm-up... total $warmupRuns")
+    println(s"Starting warm-up... ")
 
     def warmupForXMs(query: String, timeOut: Int) {
       val warmUpStartTime = System.nanoTime()
       var secondsElapsed = 0d
       while (secondsElapsed < timeOut) {
-        println(s"Running warmup.")
         val result = executeEvaluationRun(query, 0, s"0", tr, commonResults)
         val timeAfterWarmup = System.nanoTime()
         secondsElapsed = roundToMillisecondFraction(timeAfterWarmup - warmUpStartTime)
       }
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
     }
-
     //val warmupTime = measureTime(warmup)
     commonResults += s"warmupTime" -> "-"
 
-    println(s"Finished warm-up.")
-    JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
 
     for ((queryId, listOfSubQueryIds) <- queriesObject.queriesWithResults) {
 
-      val listOfWarmupSubQueryIds = queriesObject.warmupQueries.keys
-      val listOfWarmupQueries = queries(queryId)
+      val listOfQueries = queries(queryId)
+
+      val listOfWarmupSubQueryIds = queriesObject.warmupQueries(queryId)
       for (warmUpSubQueryId <- listOfWarmupSubQueryIds) {
-        val warmupQuery = listOfWarmupQueries(warmUpSubQueryId)
+        val warmupQuery = listOfQueries(warmUpSubQueryId)
         println(s"Running warmup for query $queryId-$warmUpSubQueryId.")
         warmupForXMs(warmupQuery, 15000)
       }
 
-      val listOfQueries = queries(queryId)
+      tr.awaitIdle
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
+
       var queryRun = 1
       for (subQueryId <- listOfSubQueryIds) {
         if (queryRun <= 11) {
@@ -115,6 +115,7 @@ class BerlinSparqlEvaluationParallel extends TorqueDeployableAlgorithm {
           val result = executeEvaluationRun(query, queryRun, s"${queryId.toString}", tr, commonResults)
           resultReporter(result)
           println(s"Done running evaluation for query $queryId-$subQueryId. Awaiting idle")
+          tr.awaitIdle
           JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
           println("Idle")
           queryRun += 1
