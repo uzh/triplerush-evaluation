@@ -20,6 +20,7 @@ import com.signalcollect.triplerush.TriplePattern
 import com.signalcollect.triplerush.evaluation.lubm.FileOperations._
 import com.signalcollect.triplerush.sparql.Sparql
 import com.signalcollect.triplerush.Dictionary
+import com.signalcollect.triplerush.QueryIds
 
 class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
   import SlurmEvalHelpers._
@@ -52,7 +53,7 @@ class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
     val ntriplesFileLocation = s"berlinsparql_$datasetSize-nt/dataset_$datasetSize.nt"
 
     val loadingTime = measureTime {
-      tr.loadNtriples(ntriplesFileLocation, Some(0))
+      tr.loadNtriples(ntriplesFileLocation, Some(QueryIds.embedQueryIdInLong(0)))
       tr.awaitIdle
     }
 
@@ -76,47 +77,50 @@ class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
     val queries = queriesObject.queries
 
     println(s"Queries Object: $queriesObjectName")
-    println(s"Starting warm-up... total $warmupRuns")
 
     def warmupForXMs(query: String, timeOut: Int) {
       val warmUpStartTime = System.nanoTime()
       var secondsElapsed = 0d
       while (secondsElapsed < timeOut) {
-        println(s"Running warmup.")
         val result = executeEvaluationRun(query, 0, s"0", tr, commonResults)
         val timeAfterWarmup = System.nanoTime()
         secondsElapsed = roundToMillisecondFraction(timeAfterWarmup - warmUpStartTime)
       }
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
     }
 
-    //val warmupTime = measureTime(warmup)
     commonResults += s"warmupTime" -> "-"
-
-    println(s"Finished warm-up.")
-    JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
 
-    for ((queryId, listOfSubQueryIds) <- queriesObject.queriesWithResults) {
-
-      val listOfWarmupSubQueryIds = queriesObject.warmupQueries.keys
-      val listOfWarmupQueries = queries(queryId)
+    for ((queryId, listOfSubQueryIds) <- queriesObject.warmupQueries) {
+      val listOfQueries = queries(queryId)
+      val listOfWarmupSubQueryIds = queriesObject.warmupQueries(queryId)
       for (warmUpSubQueryId <- listOfWarmupSubQueryIds) {
-        val warmupQuery = listOfWarmupQueries(warmUpSubQueryId)
+        val warmupQuery = listOfQueries(warmUpSubQueryId)
         println(s"Running warmup for query $queryId-$warmUpSubQueryId.")
         warmupForXMs(warmupQuery, 15000)
       }
+      tr.awaitIdle
+    }
+    println(s"Finished warm-up.")
+
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
+
+    for ((queryId, listOfSubQueryIds) <- queriesObject.queriesWithResults) {
 
       val listOfQueries = queries(queryId)
+
       var queryRun = 1
       for (subQueryId <- listOfSubQueryIds) {
         if (queryRun <= 11) {
+          JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
           val query = listOfQueries(subQueryId)
           println(s"Running evaluation for query $queryId-$subQueryId.")
           val result = executeEvaluationRun(query, queryRun, s"${queryId.toString}", tr, commonResults)
           resultReporter(result)
           println(s"Done running evaluation for query $queryId-$subQueryId. Awaiting idle")
-          JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
           println("Idle")
+          tr.awaitIdle
           queryRun += 1
         }
       }
@@ -158,11 +162,13 @@ class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
 
     while (resultIterator.hasNext) {
       val res = resultIterator.next
+      //for evaluation without decoding, comment the following
+      /*
       var arrayIndex = 0
       while (arrayIndex < selectVarStrings.length) {
         stringLength += res(selectVarStrings(arrayIndex)).length
         arrayIndex += 1
-      }
+      }*/
       numberOfResults += 1
     }
 
@@ -178,7 +184,8 @@ class BerlinSparqlEvaluation extends TorqueDeployableAlgorithm {
     runResult += ((s"queryId", queryDescription))
     runResult += ((s"queryRunId", queryRun.toString))
     runResult += ((s"results", numberOfResults.toString))
-    runResult += ((s"resultLength", stringLength.toString))
+    //for evaluation without decoding, comment the following
+    //runResult += ((s"resultLength", stringLength.toString))
     runResult += ((s"query", queryString))
     runResult += ((s"executionTime", executionTime.toString))
     runResult += ((s"totalMemory", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
