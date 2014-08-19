@@ -39,7 +39,7 @@ class LUBMEvaluationParallel extends TorqueDeployableAlgorithm {
     val warmupRuns = parameters("jitRepetitions").toInt
 
     val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder)
+    val tr = new TripleRush(graphBuilder, optimizerCreator = optimizerCreator)
     println("TripleRush has been started.")
 
     var commonResults = parameters
@@ -66,31 +66,29 @@ class LUBMEvaluationParallel extends TorqueDeployableAlgorithm {
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
 
     commonResults += ((s"optimizerInitialisationTime", optimizerInitialisationTime.toString))
-    commonResults += ((s"optimizerName", "ExplorationOptimizer"))
+    commonResults += ((s"optimizerName", optimizerCreator.toString()))
     commonResults += (("loadingTime", loadingTime.toString))
     commonResults += s"loadNumber" -> datasetSize.toString
     commonResults += s"dataSet" -> s"LUBM $datasetSize"
 
     val queries = LubmQueries.SparqlQueries
 
-    println(s"Starting warm-up... total $warmupRuns")
+    println(s"Starting warm-up..")
 
-    def warmup {
-      if (warmupRuns != 0) {
-        for (i <- (1 to warmupRuns / 7)) {
-          println(s"Running warmup $i/$warmupRuns")
-          for (query <- queries) {
-            executeEvaluationRun(query, 0, "warmup", tr, commonResults)
-            tr.awaitIdle
-          }
-        }
-        println(s"Finished warm-up.")
-        JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
+    def warmupForXMs(query: String, timeOut: Int) {
+      val warmUpStartTime = System.nanoTime()
+      var secondsElapsed = 0d
+      while (secondsElapsed < timeOut) {
+        val result = executeEvaluationRun(query, 0, "0", tr, commonResults)
+        val timeAfterWarmup = System.nanoTime()
+        secondsElapsed = roundToMillisecondFraction(timeAfterWarmup - warmUpStartTime)
       }
+      tr.awaitIdle
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
     }
 
-    val warmupTime = measureTime(warmup)
-    commonResults += s"warmupTime" -> warmupTime.toString
+    //val warmupTime = measureTime(warmup)
+    commonResults += s"warmupTime" -> "-"
 
     println(s"Finished warm-up.")
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
@@ -98,6 +96,9 @@ class LUBMEvaluationParallel extends TorqueDeployableAlgorithm {
 
     for (queryId <- queries.size to 1 by -1) {
       val query = queries(queryId - 1)
+      println(s"Running warmup for query $queryId")
+      warmupForXMs(query, 30000)
+
       for (queryRun <- 1 to 10) {
         println(s"Running evaluation for query $queryId.")
         val result = executeEvaluationRun(query, queryRun, queryId.toString, tr, commonResults)
