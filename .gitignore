@@ -93,3 +93,9 @@ sc-clmnjq-1.sh
 deployment.slurm.config.lubm-firstresult
 
 deployment.slurm.config.lubm-parallelism
+
+deployment.slurm.config.bsbm-firstresult
+
+deployment.slurm.config.bsbm-parallelism
+
+deployment.slurm.config.d-trinity.10240
