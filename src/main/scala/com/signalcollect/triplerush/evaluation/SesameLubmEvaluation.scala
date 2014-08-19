@@ -76,6 +76,17 @@ class SesameLubmEvaluation extends TorqueDeployableAlgorithm {
 
     JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
 
+    def warmupForXMs(query: String, timeOut: Int) {
+      val warmUpStartTime = System.nanoTime()
+      var secondsElapsed = 0d
+      while (secondsElapsed < timeOut) {
+        val result = executeEvaluationRun(query, "0", 0, sesame, commonResults)
+        val timeAfterWarmup = System.nanoTime()
+        secondsElapsed = roundToMillisecondFraction(timeAfterWarmup - warmUpStartTime)
+      }
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
+    }
+
     commonResults += ((s"optimizerInitialisationTime", "-"))
     commonResults += ((s"optimizerName", "-"))
     commonResults += (("loadingTime", loadingTime.toString))
@@ -85,26 +96,16 @@ class SesameLubmEvaluation extends TorqueDeployableAlgorithm {
     val queries = LubmQueries.SparqlQueries
     println(s"Starting warm-up... total $warmupRuns")
 
-    def warmup {
-      if (warmupRuns != 0) {
-        for (i <- (1 to warmupRuns / 7)) {
-          println(s"Running warmup $i/$warmupRuns")
-          for (query <- queries) {
-            val result = executeEvaluationRun(query, "0", 0, sesame, commonResults)
-          }
-        }
-        println(s"Finished warm-up.")
-        JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
-      }
-    }
-
-    val warmupTime = measureTime(warmup)
-    commonResults += s"warmupTime" -> warmupTime.toString
+    //val warmupTime = measureTime(warmup)
+    commonResults += s"warmupTime" -> "-"
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
 
     for (queryId <- queries.size to 1 by -1) {
       val query = queries(queryId - 1)
+      println(s"Running warmup for query $queryId")
+      warmupForXMs(query, 30000)
+
       for (queryRun <- 1 to 10) {
         println(s"Running evaluation for query $queryId.")
         val result = executeEvaluationRun(query, s"${queryId.toString}", queryRun, sesame, commonResults)
