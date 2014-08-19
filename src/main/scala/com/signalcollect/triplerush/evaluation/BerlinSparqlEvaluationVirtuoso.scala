@@ -32,45 +32,71 @@ class BerlinSparqlEvaluationVirtuoso extends TorqueDeployableAlgorithm {
   
   //How to execute commands: 
   // example: Seq("/usr/bin/rapper", sourceFile.getAbsolutePath, "-e", "-o", "ntriples") #>> targetFile !! (ProcessLogger(println(_)))
+  //https://phenoscape.org/wiki/Virtuoso
   
-  def virtuoso_start(virtuosoPath: String = "home/user/verman/", minionNumber:Int) = { //configfile: String, stdout='/dev/null', stderr='/dev/null ) = {
+  def virtuoso_start(virtuosoPath: String, minionNumber:Int) = { //configfile: String, stdout='/dev/null', stderr='/dev/null ) = {
     val envPath = s"${virtuosoPath}/env$minionNumber"
     //TODO check that both commands work (cd and virtuoso)! 
     val cmdCd = s"cd ${envPath}/var/lib/virtuoso/db".!! (ProcessLogger(println(_))
-    val cmd = s"$envPath/bin/virtuoso-t -f".!! (ProcessLogger(println(_))  //daemon_start(s"virtuoso-t -f")//reground +configfile $s$configfile", stdout = stdout, stderr = stderr)
-    //logger.debug(cmd)
+    val cmd = s"$envPath/bin/virtuoso-t".!! (ProcessLogger(println(_))  //daemon_start(s"virtuoso-t -f")//reground +configfile $s$configfile", stdout = stdout, stderr = stderr)
     cmd
   }
 
-  def isql_exec(command: String, user: String, password: String, port: Int = 1111) = {
-    val cmd = s"isql $port $user $password EXEC='$command;'".!! (ProcessLogger(println(_))
-    //logger.debug(cmd)
+  def isql_exec(command: String, user: String, password: String, port: Int = 1111, virtuosoPath: String, minionNumber:Int) = {
+    val envPath = s"${virtuosoPath}/env$minionNumber"
+    val cmd = s"${envPath}/isql $port $user $password EXEC=\"$command;\"".!! (ProcessLogger(println(_))
     cmd
   }
 
-  def virtuoso_stop(user: String, password: String, port: Int = 1111) = {
-    val cmd = s"isql $port $user $password SHUTDOWN;".!! (ProcessLogger(println(_))
-    //logger.debug(cmd)
-    cmd
+  def virtuoso_ld_dir_all(source: String, graph_iri: String = "http://berlin", ext: String = "*.nt", user: String, password: String, virtuosoPath: String, minionNumber:Int) = {
+    isql_exec(s"ld_dir_all('$source', '$ext', '$graph_iri')", user, password, virtuosoPath, minionNumber)
+  }
+  
+  def virtuoso_rdf_loader_run(user: String, password: String, virtuosoPath: String, minionNumber:Int) = {
+    isql_exec("rdf_loader_run()", user, password, virtuosoPath, minionNumber)
+    isql_exec("checkpoint;", user, password, virtuosoPath, minionNumber)
   }
 
-  def virtuoso_ld_dir_all(source: String, graph_iri: String = "http://dbpedia.org", ext: String = "*.nt", user: String, password: String) = {
-    isql_exec(s"ld_dir_all($source, $ext, $graph_iri)", user, password)
-  }
+  def virtuoso_clear_triples(user: String, password: String, virtuosoPath: String, minionNumber:Int) = isql_exec("RDF_GLOBAL_RESET()", user, password, virtuosoPath, minionNumber)
 
-  def virtuoso_rdf_loader_run(user: String, password: String) = isql_exec("rdf_loader_run()", user, password)
-
-  def virtuoso_clear_triples(user: String, password: String) = isql_exec("RDF_GLOBAL_RESET()", user, password)
-  //TODO: Or is it like here: http://webcache.googleusercontent.com/search?q=cache:b_RaKRma8g0J:virtuoso.openlinksw.com/dataspace/dav/wiki/Main/VirtRemoveTriples+&cd=1&hl=en&ct=clnk ?
-
-  def virtuoso_clear_load_table(user: String, password: String) = isql_exec("DELETE FROM DB.DBA.load_list", user, password)
+  def virtuoso_clear_load_table(user: String, password: String, virtuosoPath: String, minionNumber:Int) = isql_exec("DELETE FROM DB.DBA.load_list;", user, password, virtuosoPath, minionNumber)
+  
+  def virtuoso_stop(user: String, password: String, port: Int = 1111, virtuosoPath: String, minionNumber:Int) = isql_exec("SHUTDOWN;", user, password)
 
   //TODO: Add function for executing query!!!
+
+/*
+	Example commands are:
+	  cd envPath/env[MinionNumber]/var/lib/virtuoso/db
+	  envPath/env[MinionNumber]/bin/virtuoso-t
+	  cd envPath/env[MinionNumber]/bin
+	  ./isql 1111 dba dbaTR EXEC="ld_dir_all ('dataPath/berlinsparql_666-nt/', '*.nt', 'http://berlin')"
+	  ./isql 1111 dba dbaTR EXEC="rdf_loader_run()"
+	  ./isql 1111 dba dbaTR EXEC="checkpoint;"
+	  ./isql 1111 dba dbaTR EXEC="sparql select * from <http://berlin> where {?s ?p ?o} limit 10;"
+	  ./isql 1111 dba dbaTR EXEC="RDF_GLOBAL_RESET()"
+	  ./isql 1111 dba dbaTR EXEC="select * FROM DB.DBA.load_list;"
+	  ./isql 1111 dba dbaTR EXEC="DELETE FROM DB.DBA.load_list;"
+	  ./isql 1111 dba dbaTR EXEC="SHUTDOWN;"
+  */
   
-  
+  /*
+   * Order of execution:
+   * virtuoso_start(...)
+   * virtuoso_ld_dir_all(...)
+   * virtuoso_rdf_loader_run(...)
+   * 	repeat:
+   *  		execute query with isql_exec
+   * virtuoso_clear_triples(...)
+   * virtuoso_clear_load_table(...)
+   * virtuoso_stop(...)
+   */
+    
   /**
    * Main thingy
    */
+      
+
   
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
 
