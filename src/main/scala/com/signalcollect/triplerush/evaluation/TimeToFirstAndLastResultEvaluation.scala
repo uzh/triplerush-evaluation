@@ -100,7 +100,6 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
       val warmUpStartTime = System.nanoTime()
       var secondsElapsed = 0d
       while (secondsElapsed < timeOut) {
-        println(s"Running warmup. Query: ${patterns.mkString(", ")}")
         val result = executeEvaluationRun(patterns, selectVariables, 0, "0", 0, tr, optimizer, commonResults)
         val timeAfterWarmup = System.nanoTime()
         secondsElapsed = roundToMillisecondFraction(timeAfterWarmup - warmUpStartTime)
@@ -111,7 +110,6 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
 
     commonResults += s"warmupTime" -> "-"
 
-    JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
 
     for (queryId <- lubmQueries.size to 1 by -1) {
@@ -121,7 +119,8 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
       val patterns = query.encodedPatternUnions
       val firstPatternSequence = patterns(0)
       val selectVariables = VariableEncoding.requiredVariableBindingsSlots(firstPatternSequence)
-      if (patterns.size == 1 && firstPatternSequence.size >= 3) {
+      if (patterns.size == 1) {
+      //if (patterns.size == 1 && firstPatternSequence.size >= 3) {
 
         val optimizedQuery = tr.getQueryPlan(firstPatternSequence, Some(optimizer))
         val optimizedQueryPlan = optimizedQuery.queryPlan
@@ -144,9 +143,9 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
             println(s"Done running evaluation for query $queryId-$queryRun, slice: ${querySliceToExecute.mkString(", ")}. Awaiting idle")
             resultReporter(result)
             tr.awaitIdle
+            JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
             println("Idle")
           }
-          JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
         }
       }
 
@@ -225,6 +224,64 @@ class TimeToFirstAndLastResultEvaluation extends TorqueDeployableAlgorithm {
     runResult += ((s"firstResultExecTime", firstResultExecutionTime.toString()))
     runResult += ((s"firstAndLastResultDelta", firstAndLastResultDelta.toString()))
 
+        def medianOfList(list: List[Long]): Double = {
+      val (firstHalf, secondHalf) = list.sorted.splitAt(list.size / 2)
+      if (list.size % 2 == 0) {
+        (firstHalf.last + secondHalf.head) / 2.0
+      } else {
+        secondHalf.head
+      }
+    }
+
+    def statisticsFromList(list: List[Long]): (Long, Long, Double, Double) = {
+      val max = list.max
+      val min = list.min
+      val median = medianOfList(list)
+      val listSum = list.sum
+      val avg = listSum.toDouble / list.size
+      (max, min, median, avg)
+    }
+
+    val workerStats = tr.graph.getWorkerStatistics
+
+    val numVerticesList = workerStats.map(_.numberOfVertices)
+    val numOutEdgesList = workerStats.map(_.numberOfOutgoingEdges)
+    val sgnMsgRcvList = workerStats.map(_.signalMessagesReceived)
+    val bulkSgnMsgRcvList = workerStats.map(_.bulkSignalMessagesReceived)
+    val msgToWorkersList = workerStats.map(_.messagesSentToWorkers)
+
+    val (maxNumVertices, minNumVertices, medianNumVertices, avgNumVertices) = statisticsFromList(numVerticesList)
+    val (maxNumOutEdges, minNumOutEdges, medianNumOutEdges, avgNumOutEdges) = statisticsFromList(numOutEdgesList)
+    val (maxSgnMsgRcv, minSgnMsgRcv, medianSgnMsgRcv, avgSgnMsgRcv) = statisticsFromList(sgnMsgRcvList)
+    val (maxBulkSgnMsgRcv, minBulkSgnMsgRcv, medianBulkSgnMsgRcv, avgBulkSgnMsgRcv) = statisticsFromList(bulkSgnMsgRcvList)
+    val (maxMsgToWorkers, minMsgToWorkers, medianMsgToWorkers, avgMsgToWorkers) = statisticsFromList(msgToWorkersList)
+
+    runResult += ((s"maxNumVertices", maxNumVertices.toString()))
+    runResult += ((s"minNumVertices", minNumVertices.toString()))
+    runResult += ((s"medianNumVertices", medianNumVertices.toString()))
+    runResult += ((s"avgNumVertices", avgNumVertices.toString()))
+
+    runResult += ((s"maxNumOutEdges", maxNumOutEdges.toString()))
+    runResult += ((s"minNumOutEdges", minNumOutEdges.toString()))
+    runResult += ((s"medianNumOutEdges", medianNumOutEdges.toString()))
+    runResult += ((s"avgNumOutEdges", avgNumOutEdges.toString()))
+
+    runResult += ((s"maxSgnMsgRcv", maxSgnMsgRcv.toString()))
+    runResult += ((s"minSgnMsgRcv", minSgnMsgRcv.toString()))
+    runResult += ((s"medianSgnMsgRcv", medianSgnMsgRcv.toString()))
+    runResult += ((s"avgSgnMsgRcv", avgSgnMsgRcv.toString()))
+
+    runResult += ((s"maxBulkSgnMsgRcv", maxBulkSgnMsgRcv.toString()))
+    runResult += ((s"minBulkSgnMsgRcv", minBulkSgnMsgRcv.toString()))
+    runResult += ((s"medianBulkSgnMsgRcv", medianBulkSgnMsgRcv.toString()))
+    runResult += ((s"avgBulkSgnMsgRcv", avgBulkSgnMsgRcv.toString()))
+
+    runResult += ((s"maxMsgToWorkers", maxMsgToWorkers.toString()))
+    runResult += ((s"minMsgToWorkers", minMsgToWorkers.toString()))
+    runResult += ((s"medianMsgToWorkers", medianMsgToWorkers.toString()))
+    runResult += ((s"avgMsgToWorkers", avgMsgToWorkers.toString()))
+
+    
     runResult
   }
 
