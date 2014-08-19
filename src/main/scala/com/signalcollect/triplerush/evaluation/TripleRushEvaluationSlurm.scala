@@ -55,7 +55,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     val worksheetName = parameters(worksheetNameKey)
     val rdfTypePartitioning = parameters(rdfTypePartitioningKey).toBoolean
     val graphBuilder = new GraphBuilder[Long, Any]().withPreallocatedNodes(nodeActors)
-    val tr = new TripleRush(graphBuilder, optimizerCreator = HeuristicOptimizerCreator)
+    val tr = new TripleRush(graphBuilder, optimizerCreator = optimizerCreator)
     //val tr = new TripleRush(graphBuilder)
     println("TripleRush has been started.")
     var commonResults = parameters
@@ -63,6 +63,8 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     commonResults += "numberOfWorkers" -> tr.graph.numberOfWorkers.toString
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
+    val jvmArgs = ManagementFactory.getRuntimeMXBean.getInputArguments
+    
     val loadingTime = measureTime {
       loadLubm(universities.get.toInt, tr, rdfTypePartitioning)
       tr.awaitIdle
@@ -83,33 +85,36 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     } else {
       LubmQueries.fullQueries
     }
-    
+
     commonResults += ((s"optimizerInitialisationTime", optimizerInitialisationTime.toString))
-    commonResults += ((s"optimizerName", "HeuristicsOptimizerCreator"))
+    commonResults += ((s"optimizerName", optimizerCreator.toString()))
     commonResults += (("loadingTime", loadingTime.toString))
     commonResults += s"loadNumber" -> universities.toString
     commonResults += s"dataSet" -> s"lubm$universities"
 
     println("Starting warm-up...")
 
-    def warmup {
-      for (i <- 1 to warmupRuns) {
-        println(s"Running warmup $i/$warmupRuns")
-        for (query <- queries) {
-          executeEvaluationRun(query, "warmup", 0, tr, commonResults)
-          tr.awaitIdle
-        }
+    def warmupForXMs(patterns: Seq[TriplePattern], timeOut: Int) {
+      val warmUpStartTime = System.nanoTime()
+      var secondsElapsed = 0d
+      while (secondsElapsed < timeOut) {
+        val result = executeEvaluationRun(patterns, "0", 0, tr, commonResults)
+        val timeAfterWarmup = System.nanoTime()
+        secondsElapsed = roundToMillisecondFraction(timeAfterWarmup - warmUpStartTime)
       }
-      println(s"Finished warm-up.")
-      JvmWarmup.sleepUntilGcInactiveForXSeconds(60)
+      tr.awaitIdle
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
     }
 
-    val warmupTime = measureTime(warmup)
-    commonResults += s"warmupTime" -> warmupTime.toString
+    //val warmupTime = measureTime(warmup)
+    commonResults += s"warmupTime" -> "-"
 
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
     for (queryId <- queries.size to 1 by -1) {
       val query = queries(queryId - 1)
+      println(s"Running warmup for query $queryId")
+      warmupForXMs(query, 30000)
+      
       for (queryRun <- 1 to 10) {
         println(s"Running evaluation for query $queryId.")
         println(s"query: ${queries(queryId - 1)}.")
@@ -118,7 +123,6 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
         println(s"Done running evaluation for query $queryId. Awaiting idle")
         tr.awaitIdle
         println("Idle")
-
         JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
       }
     }
@@ -142,7 +146,7 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
     runResult += ((s"totalMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory).toString))
     runResult += ((s"freeMemoryBefore", bytesToGigabytes(Runtime.getRuntime.freeMemory).toString))
     runResult += ((s"usedMemoryBefore", bytesToGigabytes(Runtime.getRuntime.totalMemory - Runtime.getRuntime.freeMemory).toString))
-        
+
     val startTime = System.nanoTime
 
     val result = tr.resultIteratorForQuery(query)
@@ -185,9 +189,9 @@ class TripleRushEvaluationSlurm extends TorqueDeployableAlgorithm {
 object SlurmEvalHelpers {
 
   def loadLubm(universities: Int, triplerush: TripleRush, rdfTypePartitioning: Boolean) {
-    
+
     val numberOfWorkers = triplerush.graph.numberOfWorkers
-    
+
     println(s"Loading LUBM $universities ...")
     val lubmFolderName =
       if (rdfTypePartitioning) {
@@ -200,10 +204,10 @@ object SlurmEvalHelpers {
     for (splitId <- 0l until 2880l) {
       val splitFile = s"./$lubmFolderName/$splitId.filtered-split"
       triplerush.loadBinary(splitFile, Some(splitId))
-      //if (splitId % 288 == 279) {
       if (splitId % numberOfWorkers == 0) {
         println(s"Dispatched up to split #$splitId/2880, awaiting idle.")
         triplerush.awaitIdle
+        JvmWarmup.sleepUntilGcInactiveForXSeconds(1, 10)
         println(s"Continuing graph loading...")
       }
     }
