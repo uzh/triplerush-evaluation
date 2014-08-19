@@ -88,11 +88,11 @@ class SesameBsbmEvaluation extends TorqueDeployableAlgorithm {
       val warmUpStartTime = System.nanoTime()
       var secondsElapsed = 0d
       while (secondsElapsed < timeOut) {
-        println(s"Running warmup.")
         val result = executeEvaluationRun(query, "0", 0, sesame, commonResults)
         val timeAfterWarmup = System.nanoTime()
         secondsElapsed = roundToMillisecondFraction(timeAfterWarmup - warmUpStartTime)
       }
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
     }
 
     //val warmupTime = measureTime(warmup)
@@ -102,15 +102,16 @@ class SesameBsbmEvaluation extends TorqueDeployableAlgorithm {
 
     for ((queryId, listOfSubQueryIds) <- queriesObject.queriesWithResults) {
 
-        val listOfWarmupSubQueryIds = queriesObject.warmupQueries.keys
-        val listOfWarmupQueries = queries(queryId)
-        for (warmUpSubQueryId <- listOfWarmupSubQueryIds) {
-          val warmupQuery = listOfWarmupQueries(warmUpSubQueryId)
-          println(s"Running warmup for query $queryId-$warmUpSubQueryId.")
-          warmupForXMs(warmupQuery, 15000)
-        }
-
       val listOfQueries = queries(queryId)
+
+      val listOfWarmupSubQueryIds = queriesObject.warmupQueries(queryId)
+      for (warmUpSubQueryId <- listOfWarmupSubQueryIds) {
+        val warmupQuery = listOfQueries(warmUpSubQueryId)
+        println(s"Running warmup for query $queryId-$warmUpSubQueryId.")
+        warmupForXMs(warmupQuery, 15000)
+      }
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
+
       var queryRun = 1
       for (subQueryId <- listOfSubQueryIds) {
         if (queryRun <= 11) {
