@@ -110,7 +110,7 @@ class TripleRushEvaluationSlurmLUBM10240 extends TorqueDeployableAlgorithm {
       //JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
       //these parameters were used for evals on Aug 18
       //JvmWarmup.sleepUntilGcInactiveForXSeconds(360, 600)
-      JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(20, 30)
     }
 
     commonResults += s"warmupTime" -> "-"
@@ -118,14 +118,14 @@ class TripleRushEvaluationSlurmLUBM10240 extends TorqueDeployableAlgorithm {
     for (queryId <- queries.size to 1 by -1) {
       val query = queries(queryId - 1)
       println(s"Running warmup for query $queryId")
-      warmupForXMs(query, 15000)
-      warmupForXMs(query, 15000)
-      warmupForXMs(query, 15000)
-      warmupForXMs(query, 15000)
-      warmupForXMs(query, 15000)
-      warmupForXMs(query, 15000)
-      warmupForXMs(query, 15000)
-      warmupForXMs(query, 15000)
+      warmupForXMs(query, 5000)
+      warmupForXMs(query, 5000)
+      warmupForXMs(query, 5000)
+      warmupForXMs(query, 5000)
+      warmupForXMs(query, 5000)
+      warmupForXMs(query, 5000)
+      warmupForXMs(query, 5000)
+      warmupForXMs(query, 5000)
     }
 
     JvmWarmup.sleepUntilGcInactiveForXSeconds(360, 600)
@@ -135,7 +135,7 @@ class TripleRushEvaluationSlurmLUBM10240 extends TorqueDeployableAlgorithm {
       val query = queries(queryId - 1)
 
       for (queryRun <- 1 to 10) {
-        JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
+        JvmWarmup.sleepUntilGcInactiveForXSeconds(30, 90)
         println(s"Running evaluation for query $queryId.")
         println(s"query: ${queries(queryId - 1)}.")
         val result = executeEvaluationRun(query, queryId.toString, queryRun, tr, commonResults)
