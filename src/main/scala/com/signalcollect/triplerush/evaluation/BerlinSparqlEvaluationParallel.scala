@@ -49,10 +49,16 @@ class BerlinSparqlEvaluationParallel extends TorqueDeployableAlgorithm {
     commonResults += "java.runtime.version" -> System.getProperty("java.runtime.version")
 
     val queriesObjectName = s"com.signalcollect.triplerush.evaluation.BerlinSparqlParameterized$datasetSize"
-    val ntriplesFileLocation = s"berlinsparql_$datasetSize-nt/dataset_$datasetSize.nt"
+    //val ntriplesFileLocation = s"berlinsparql_$datasetSize-nt/dataset_$datasetSize.nt"
+    val ntriplesFileLocation = s"berlinsparql_$datasetSize-nt"
+
+    /*val loadingTime = measureTime {
+      tr.loadNtriples(ntriplesFileLocation)
+      tr.awaitIdle
+    }*/
 
     val loadingTime = measureTime {
-      tr.loadNtriples(ntriplesFileLocation)
+      loadBSBMFromNTriples(ntriplesFileLocation, tr)
       tr.awaitIdle
     }
 
@@ -124,6 +130,22 @@ class BerlinSparqlEvaluationParallel extends TorqueDeployableAlgorithm {
     }
 
     tr.shutdown
+  }
+
+  def loadBSBMFromNTriples(location: String, triplerush: TripleRush) {
+
+    val sourceFiles = filesIn(location).
+      filter(_.getName.endsWith(".nt")).
+      sorted
+
+    for (src <- sourceFiles) {
+      val ntFile = s"$src"
+      println(s"Loading file $ntFile")
+      triplerush.loadNtriples(ntFile)
+      println(s"Awaiting idle. Continuing graph loading...")
+      triplerush.awaitIdle
+      JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 120)
+    }
   }
 
   def executeEvaluationRun(queryString: String, queryRun: Int, queryDescription: String, tr: TripleRush, commonResults: Map[String, String]): Map[String, String] = {
