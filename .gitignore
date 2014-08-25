@@ -99,3 +99,9 @@ deployment.slurm.config.bsbm-firstresult
 deployment.slurm.config.bsbm-parallelism
 
 deployment.slurm.config.d-trinity.10240
+
+deployment.slurm.config.virtuoso-bsbm
+
+deployment.slurm.config.virtuoso-lubm
+
+lib/virtjdbc4.jar
