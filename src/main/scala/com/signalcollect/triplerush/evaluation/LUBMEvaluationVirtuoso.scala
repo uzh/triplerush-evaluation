@@ -30,9 +30,8 @@ import java.sql.DriverManager
 import java.sql.Connection
 import java.io._
 import java.util.Properties
-//import java.sql._
 
-class BerlinSparqlEvaluationVirtuoso extends TorqueDeployableAlgorithm {
+class LUBMEvaluationVirtuoso extends TorqueDeployableAlgorithm {
   import SlurmEvalHelpers._
 
   def execute(parameters: Map[String, String], nodeActors: Array[ActorRef]) {
@@ -55,17 +54,18 @@ class BerlinSparqlEvaluationVirtuoso extends TorqueDeployableAlgorithm {
 
     Class.forName("virtuoso.jdbc4.Driver");
     val jdbcConnection = DriverManager.getConnection(s"jdbc:virtuoso://$virtuosoHost:1111", s"$virtuosoUserName", s"$virtuosoPassword");
+
     val slurmJobId = System.getenv("SLURM_JOB_ID")
     val userName = System.getenv("USER")
     val workingDir = s"/home/slurm/$userName-$slurmJobId"
     println(s"working directory is: $workingDir")
 
-    val queriesObjectName = s"com.signalcollect.triplerush.evaluation.BerlinSparqlParameterized$datasetSize"
-    val ntriplesDirectory = s"/home/user/bpaudel/berlinsparql_$datasetSize-nt/"
+    val ntriplesDirectory = s"/home/user/bpaudel/lubm$datasetSize-nt/"
     println(s"ntriplesdir: $ntriplesDirectory")
 
-    val queriesObject = Class.forName(queriesObjectName).newInstance.asInstanceOf[BerlinSparqlQueries]
-    val queries = queriesObject.queries
+    val queries = LubmQueries.SparqlQueries
+
+    println(s"Starting warm-up and evaluation")
 
     var commonResults = parameters
     commonResults += "jitRepetitions" -> warmupRuns.toString
@@ -75,54 +75,35 @@ class BerlinSparqlEvaluationVirtuoso extends TorqueDeployableAlgorithm {
     commonResults += ((s"optimizerInitialisationTime", "-"))
     commonResults += ((s"optimizerName", "-"))
     commonResults += s"loadNumber" -> datasetSize.toString
-    commonResults += s"dataSet" -> s"berlinsparql $datasetSize"
+    commonResults += s"dataSet" -> s"LUBM $datasetSize"
 
-    println(s"Queries Object: $queriesObjectName")
-    println(s"Starting warm-up and evaluation")
-
-    JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
     val resultReporter = new GoogleDocsResultHandler(spreadsheetUsername, spreadsheetPassword, spreadsheetName, worksheetName)
 
-    for ((queryId, listOfSubQueryIds) <- queriesObject.queriesWithResults) {
-      val listOfQueries = queries(queryId)
-      var queryRun = 1
-      for (subQueryId <- listOfSubQueryIds) {
-        if (queryRun <= 11) {
-          val query = listOfQueries(subQueryId)
-          println(s"Running evaluation for query $queryId-$subQueryId.")
+    JvmWarmup.sleepUntilGcInactiveForXSeconds(60, 180)
 
-          val coldResult = executeEvaluationRun(query, queryRun, s"${queryId.toString}", true, commonResults, jdbcConnection)
-          resultReporter(coldResult)
-          println(s"Done running cold evaluation for query $queryId-$subQueryId. Awaiting idle")
-          JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
-          val warmResult = executeEvaluationRun(query, queryRun, s"${queryId.toString}", false, commonResults, jdbcConnection)
-          resultReporter(warmResult)
-          println(s"Done running warm evaluation for query $queryId-$subQueryId. Awaiting idle")
-          JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
-          println("Idle")
-          queryRun += 1
+    for (queryId <- queries.size to 1 by -1) {
+      val query = queries(queryId - 1)
+      println(s"Running evaluation for query $queryId.")
+      for (queryRun <- 1 to 11) {
+        val isColdRun = {
+          if (queryRun == 1) {
+            true
+          } else {
+            false
+          }
         }
+        val result = executeEvaluationRun(query, s"${queryId.toString}", queryRun, isColdRun, commonResults, jdbcConnection)
+        resultReporter(result)
+        println(s"Done running evaluation for query $queryId, run: $queryRun. Awaiting idle")
+        JvmWarmup.sleepUntilGcInactiveForXSeconds(10, 30)
+        println("Idle")
       }
     }
   }
 
-/*  def executeQuery(conn: Connection, query: String): (Int, Double) = {
-    val startTime = System.nanoTime
-    val statement = conn.createStatement()
-    val result = statement.executeQuery(query)
-    var numberOfResults = 0
-    while (result.next()) {
-      numberOfResults += 1
-    }
-    statement.close();
-    val finishTime = System.nanoTime
-    val executionTime = roundToMillisecondFraction(finishTime - startTime)
-    (numberOfResults, executionTime)
-  }
-*/
   def executeEvaluationRun(queryString: String,
-    queryRun: Int,
     queryDescription: String,
+    queryRun: Int,
     isColdRun: Boolean,
     commonResults: Map[String, String],
     connection: Connection): Map[String, String] = {
